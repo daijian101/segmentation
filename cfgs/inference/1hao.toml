@@ -1,0 +1,62 @@
+gpus = ["0"]
+batch_size = 10
+
+# BCA
+#data_path: /home/ubuntu/sdb1.8T/dj/data/bca
+#im0_path: ${data_path}/IM0
+#mat_path: /home/ubuntu/sdb1.8T/dj/bca_ct_mat_tmp
+#boundary_file: ${data_path}/boundaries.csv
+
+# W-DS1
+#data_path: /home/ubuntu/sdb1.8T/dj/data/bca
+#IM0_path: /home/ubuntu/sda1.8T/BCA/W-DS1/
+#mat_path: /home/ubuntu/sdb1.8T/dj/data/W-DS1/ct
+#boundary_file: /home/ubuntu/sdb1.8T/dj/data/W-DS1/boundaries.csv
+
+# 254
+IM0_path = "/data/BCA/W-DS20/W_DS20_onlyCT"
+volume_json_path = "/data/BCA/W-DS20/W_DS20_onlyCT_json"
+result_cavass_path = "/data/BCA/W-DS20_label"
+convert_json = true
+
+inference_labels = ["IAM", "OAM", "Skn", "SMT", "SAT", "VAT"]
+#inference_labels = ["IAM"]
+
+pretrained_model_zoo = "/data/dj/pretrained"
+
+[labels.IAM]
+model = "unet_plus_plus"
+checkpoint = "${pretrained_model_zoo}/IAM_UNet++.pt"
+post_process = ["keeping_largest_region",]
+
+[labels.OAM]
+model = "unet_plus_plus"
+checkpoint = "${pretrained_model_zoo}/OAM_UNet++.pt"
+post_process = ["keeping_largest_region", "filling"]
+
+[labels.Skn]
+model = "unet_plus_plus"
+checkpoint = "${pretrained_model_zoo}/Skn_UNet++.pt"
+post_process = ["keeping_largest_region", "filling"]
+
+[labels.SAT]
+model = "ga_net"
+checkpoint = "${pretrained_model_zoo}/SAT_GA-Net.pt"
+
+[labels.VAT]
+model = "ga_net"
+checkpoint = "${pretrained_model_zoo}/VAT_GA-Net.pt"
+
+[labels.Sk]
+model = "ga_net"
+checkpoint = "${pretrained_model_zoo}/Sk_GA-Net.pt"
+
+[labels.SMT]
+model = "ga_net"
+checkpoint = "${pretrained_model_zoo}/SMT_GA-Net.pt"
+
+[models.unet_plus_plus]
+batch_size = 30
+
+[models.ga_net]
+batch_size = 50
