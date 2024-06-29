@@ -173,7 +173,6 @@ def main():
                 dice_metric.update(val_result, target)
 
             mean_val_dice_score = dice_metric.mean()
-            log.warning(f'mean val dice {mean_val_dice_score}, g {world_rank}')
             if is_distributed:
                 mean_val_dice_score = torch.tensor(mean_val_dice_score, device=device)
                 dist.all_reduce(mean_val_dice_score, op=ReduceOp.AVG)
@@ -203,9 +202,9 @@ if __name__ == '__main__':
     is_distributed = cfg.is_distributed if 'is_distributed' in cfg else False
     if is_distributed:
         if len(cfg.gpus) == 1:
-            log.warning('*****************************************')
-            log.warning('Program is running on distributed mode but with ONLY 1 GPU acquired.')
-            log.warning('*****************************************')
+            logger.warning('*****************************************')
+            logger.warning('Program is running on distributed mode but with ONLY 1 GPU acquired.')
+            logger.warning('*****************************************')
 
         local_rank = int(os.environ['LOCAL_RANK'])
         world_rank = int(os.environ['RANK'])
@@ -213,10 +212,10 @@ if __name__ == '__main__':
         dist.init_process_group('nccl', rank=world_rank, world_size=world_size)
 
         device = torch.device(f'cuda:{str(local_rank)}')
-        log.info('*****************************************')
-        log.info(f'Program is running on distributed mode with WORLD SIZE of {world_size}.')
-        log.info(f'Current process LOCAL RANK IS: {local_rank}, GLOBAL RANK IS: {world_rank}.')
-        log.info('*****************************************')
+        logger.info('*****************************************')
+        logger.info(f'Program is running on distributed mode with WORLD SIZE of {world_size}.')
+        logger.info(f'Current process LOCAL RANK IS: {local_rank}, GLOBAL RANK IS: {world_rank}.')
+        logger.info('*****************************************')
     else:
         device = torch.device('cuda')
         world_rank = 0
