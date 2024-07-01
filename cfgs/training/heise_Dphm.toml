@@ -12,10 +12,8 @@ label = "Dphm"
 # optimizer
 lr = 1e-2
 epochs = 100
-#batch_size = 12
-batch_size = 4
-#val_batch_size = 60
-val_batch_size = 10
+batch_size = 8
+val_batch_size = 20
 val_interval = 1
 
 snapshot = "${user_path}/running/bca_${label}"

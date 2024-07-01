@@ -3,8 +3,9 @@ import os
 import numpy as np
 import torch
 import torch.distributed as dist
-from torch.distributed import ReduceOp
 from einops import rearrange
+from jbag import MetricSummary
+from jbag import logger
 from jbag.checkpoint import load_checkpoint, save_checkpoint
 from jbag.config import get_config
 from jbag.io import read_txt_2_list
@@ -12,10 +13,11 @@ from jbag.models import UNetPlusPlus
 from jbag.samplers import GridSampler
 from jbag.transforms import ZscoreNormalization, ToType, AddChannel
 from medpy.metric import dc
-from monai.losses import DiceLoss
+from monai.losses import DiceLoss, DiceCELoss, DiceFocalLoss
 from tensorboardX import SummaryWriter
 from torch.backends import cudnn
 from torch.cuda.amp import autocast, GradScaler
+from torch.distributed import ReduceOp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import SGD
 from torch.optim.lr_scheduler import PolynomialLR
@@ -27,8 +29,11 @@ from tqdm import tqdm, trange
 from cfgs.args import parser
 from dataset.image_dataset import JSONImageDataset
 from materials.meas_stds_const import WDS_MEAN, WDS_STD
-from jbag import logger
-from jbag import MetricSummary
+
+loss_criterion_dict = {'dice': DiceLoss,
+                       'dice_ce': DiceCELoss,
+                       'dice_focal': DiceFocalLoss}
+
 
 def main():
     @torch.no_grad()
@@ -87,7 +92,7 @@ def main():
     training_data_loader = DataLoader(dataset=training_dataset,
                                       batch_size=cfg.batch_size,
                                       shuffle=shuffle,
-                                      num_workers=2,
+                                      num_workers=4,
                                       pin_memory=True,
                                       sampler=training_data_sampler)
 
@@ -127,14 +132,16 @@ def main():
         load_checkpoint(cfg.checkpoint, model)
 
     # Train
-    dice_criterion = DiceLoss(to_onehot_y=True, softmax=True)
+    loss_criterion = loss_criterion_dict[cfg.loss_criterion](to_onehot_y=True, softmax=True)
     dice_metric = MetricSummary(metric_fn=dc)
     val_interval = cfg.val_interval if 'val_interval' in cfg else 1
     epoch_bar = trange(0, cfg.epochs, postfix={'rank': world_rank})
     for epoch in epoch_bar:
         epoch_bar.postfix = f'epoch: {epoch}'
-        model.train()
+        if is_master:
+            vis_log.add_scalar('lr', poly_lr.get_last_lr()[0], epoch)
 
+        model.train()
         batch_bar = tqdm(training_data_loader, postfix={'rank': world_rank})
         for batch in batch_bar:
             optimizer.zero_grad()
@@ -142,11 +149,10 @@ def main():
             gt_label = batch[label]
             with autocast():
                 output = model(image.to(device))
-                loss = dice_criterion(output, gt_label.to(device))
+                loss = loss_criterion(output, gt_label.to(device))
             grad_scaler.scale(loss).backward()
             grad_scaler.step(optimizer)
             grad_scaler.update()
-
             loss_scalar = loss.detach().cpu()
             if is_master:
                 vis_log.add_scalar('loss', loss_scalar, iteration)
@@ -154,8 +160,6 @@ def main():
             batch_bar.postfix = f'loss: {loss_scalar:.5f} epoch: {epoch}  rank: {world_rank}'
 
         poly_lr.step()
-        if is_master:
-            vis_log.add_scalar('lr', poly_lr.get_last_lr(), epoch)
 
         # validate epoch
         if epoch % val_interval == 0:
@@ -184,7 +188,8 @@ def main():
 
                     vis_log.add_scalar('snapshot/epoch', epoch, epoch)
                     vis_log.add_scalar('snapshot/dice', best_val_dice, epoch)
-        dist.barrier()
+        if is_distributed:
+            dist.barrier()
 
 
 if __name__ == '__main__':

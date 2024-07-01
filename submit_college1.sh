@@ -1,13 +1,13 @@
 #!/bin/bash
 
-#SBATCH -J "LCR"
+#SBATCH -J "dphm_dice_focal"
 #SBATCH -p dlq
-#SBATCH --exclude=compute[02-03]
-#SBATCH -o /cm/home/cs14274101/archive/dj/log/lcr.log
+#SBATCH -o /home/cs14274101/dj/log/dphm_dice_focal.log
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=2
+#SBATCH -c 4
 #SBATCH --gres=gpu:1
-#SBATCH -t 48:00:00
+#SBATCH -t 150:00:00
+#SBATCH -x compute[02-03]
 
-/cm/home/cs14274101/miniconda3/envs/py11/bin/python -u /cm/home/cs14274101/archive/dj/bca/train.py --cfg /cm/home/cs14274101/archive/dj/bca/cfgs/training/college1_LCR.toml
+/home/cs14274101/miniconda3/envs/py11/bin/python -u /home/cs14274101/dj/segmentation/train_vanilla.py --cfg /home/cs14274101/dj/segmentation/cfgs/training/college1_Dphm.toml
