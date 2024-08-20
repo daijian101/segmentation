@@ -1,5 +1,4 @@
 import os
-from functools import partial
 
 import numpy as np
 import torch
@@ -12,7 +11,7 @@ from jbag.checkpoint import load_checkpoint, save_checkpoint
 from jbag.config import get_config
 from jbag.io import read_txt_2_list, read_json
 from jbag.models.deep_supervision import DeepSupervisionLossWrapper, get_deep_supervision_loss_weights, \
-    set_deep_supervision
+    set_deep_supervision, get_deep_supervision_scales
 from jbag.samplers import GridSampler
 from jbag.transforms import ToType, AddChannel, ToTensor
 from jbag.transforms.brightness import MultiplicativeBrightnessTransform
@@ -38,7 +37,6 @@ from tqdm import tqdm, trange
 
 from cfgs.args import parser
 from dataset.dataset import ImageDataset, BalancedForegroundRegionDataset
-
 from loss_criterions import get_loss_criterion
 from models import model_zoo
 
@@ -56,9 +54,9 @@ def main():
     val_test_transforms = Compose([
         ToType(keys='data', dtype=np.float32),
         ZscoreNormalization(keys='data', mean=dataset_properties['intensity_mean'],
-                                  std=dataset_properties['intensity_std'],
-                                  lower_bound=dataset_properties['intensity_0_5_percentile'],
-                                  upper_bound=dataset_properties['intensity_99_5_percentile']),
+                            std=dataset_properties['intensity_std'],
+                            lower_bound=dataset_properties['intensity_0_5_percentile'],
+                            upper_bound=dataset_properties['intensity_99_5_percentile']),
         # GetBoundary(keys=['data', cfg.label], boundary_dict=boundary_dict)
     ])
 
@@ -104,9 +102,9 @@ def main():
         tr_transforms = [
             ToType(keys='data', dtype=np.float32),
             ZscoreNormalization(keys='data', mean=dataset_properties['intensity_mean'],
-                                      std=dataset_properties['intensity_std'],
-                                      lower_bound=dataset_properties['intensity_0_5_percentile'],
-                                      upper_bound=dataset_properties['intensity_99_5_percentile']),
+                                std=dataset_properties['intensity_std'],
+                                lower_bound=dataset_properties['intensity_0_5_percentile'],
+                                upper_bound=dataset_properties['intensity_99_5_percentile']),
             AddChannel(keys=['data', cfg.label], dim=0),
             ToTensor(keys=['data', cfg.label]),
             SpatialTransform(keys=['data', cfg.label], apply_probability=1,
@@ -163,7 +161,9 @@ def main():
                            p_retain_stats=cfg.training_data_augments.gamma_transform2.p_retain_stats
                            ),
         ]
-        if cfg.network.deep_supervision:
+
+        deep_supervision = 'deep_supervision' in cfg.network and cfg.network.deep_supervision
+        if deep_supervision:
             tr_transforms.append(DownsampleTransform(keys=[cfg.label], scales=get_deep_supervision_scales(cfg)))
 
         tr_transforms = Compose(tr_transforms)
@@ -210,7 +210,7 @@ def main():
 
         # Train
         loss_criterion: torch.nn.Module = get_loss_criterion(cfg.loss_criterion)(to_onehot_y=True, softmax=True)
-        if cfg.network.deep_supervision:
+        if deep_supervision:
             loss_weights = get_deep_supervision_loss_weights(cfg)
             loss_criterion = DeepSupervisionLossWrapper(loss_criterion, loss_weights)
         dice_metric = MetricSummary(metric_fn=dc)
@@ -225,7 +225,7 @@ def main():
 
             network.train()
             # insure deep supervision
-            if cfg.network.deep_supervision:
+            if deep_supervision:
                 set_deep_supervision(network, True)
             batch_bar = trange(0, cfg.n_iter_per_epoch, postfix={'rank': world_rank})
             for _ in batch_bar:
@@ -240,7 +240,7 @@ def main():
                 gt_label = batch[cfg.label]
                 with autocast():
                     output = network(image.to(device))
-                    if cfg.network.deep_supervision:
+                    if deep_supervision:
                         gt_label = [each.to(device) for each in gt_label]
                     else:
                         gt_label = gt_label.to(device)

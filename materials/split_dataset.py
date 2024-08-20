@@ -19,9 +19,6 @@ write_list_2_txt(f"/data/dj/data/bca/dataset/{label}_val_cts.txt", val_samples)
 
 
 
-
-
-
 # label = 'SMT'
 # all_data = read_txt_2_list(f'/data1/dj/data/bca/dataset/all_{label}.txt')
 

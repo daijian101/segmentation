@@ -8,17 +8,20 @@ from jbag.io import read_txt_2_list, scp
 from jbag.io import save_json
 from tqdm import tqdm
 
-image_root_path = '/data/dj/data/bca/cavass_data'
+
+data_path = '/data1/dj/data/bca/'
+
+image_root_path = os.path.join(data_path, 'cavass_data')
 
 im0_path = os.path.join(image_root_path, 'images')
-ct_saved_image_path = '/data/dj/data/bca/json/slices/images'
-label_saved_root_path = '/data/dj/data/bca/json/slices'
+ct_saved_image_path = os.path.join(data_path, 'json/slices/images')
+label_saved_root_path =  os.path.join(data_path, 'json/slices')
 
 label = 'Skn'
 labels = [label]
 # boundary_dict = get_boundary(boundary_file)
 
-cts = read_txt_2_list(f'/data/dj/data/bca/dataset/{label}_training_cts.txt')
+cts = read_txt_2_list(os.path.join(data_path, f'dataset/{label}_training_cts.txt'))
 for ct in tqdm(cts):
     im0_file = os.path.join(im0_path, f'{ct}.IM0')
     ct_data = None

@@ -3,6 +3,6 @@ from inference.vanilla_inference import VanillaInference
 
 inference_zoo = {
     'unet': VanillaInference,
-    'unet_plus_plus': VanillaInference,
+    'unet++': VanillaInference,
     'ga_net': GANetInference,
 }
