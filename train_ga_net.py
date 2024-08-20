@@ -23,7 +23,7 @@ from tqdm import tqdm, trange
 from MetricSummary import MetricSummary
 from cfgs.args import parser
 from dataset.get_boundary import get_boundary
-from dataset.image_dataset import JSONImageDataset
+from dataset.dataset import ImageDataset
 from dataset.transforms import GetBoundary
 from materials.meas_stds_const import BCA_MEAN, BCA_STD
 from models import GANet
@@ -80,10 +80,10 @@ def main():
     training_label_dict = {tissue_label: cfg.slice_sample_dir[tissue_label],
                            region_label: cfg.slice_sample_dir[region_label]}
 
-    training_dataset = JSONImageDataset(sample_list=read_txt_2_list(cfg.training_slice_txt),
-                                        sample_dir=training_image_dir,
-                                        label_dict=training_label_dict,
-                                        transforms=tr_transforms)
+    training_dataset = ImageDataset(data_indices=read_txt_2_list(cfg.training_slice_txt),
+                                    raw_data_dir=training_image_dir,
+                                    label_dir_dict=training_label_dict,
+                                    transforms=tr_transforms)
 
     training_data_loader = DataLoader(dataset=training_dataset,
                                       batch_size=cfg.batch_size,
@@ -101,11 +101,11 @@ def main():
     val_samples = read_txt_2_list(cfg.val_ct_txt)
     volume_image_dir = cfg.volume_sample_dir.image
     val_label_dict = {tissue_label: cfg.volume_sample_dir[tissue_label]}
-    val_dataset = JSONImageDataset(sample_list=val_samples,
-                                   sample_dir=volume_image_dir,
-                                   label_dict=val_label_dict,
-                                   add_postfix=True,
-                                   transforms=val_transforms)
+    val_dataset = ImageDataset(data_indices=val_samples,
+                               raw_data_dir=volume_image_dir,
+                               label_dir_dict=val_label_dict,
+                               add_postfix=True,
+                               transforms=val_transforms)
     val_data_loader = DataLoader(val_dataset, 1)
 
     best_val_dice = 0

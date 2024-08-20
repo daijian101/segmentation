@@ -10,9 +10,9 @@ SCRIPT = 'train_vanilla.py'
 # WORKSPACE = os.path.join(PWD, WORKSPACE)
 WORKSPACE = PWD
 
-PARAMETERS = f'--owner DaiJian --cfg ./cfgs/training/2hao_Dphm.toml'
+PARAMETERS = f'--owner DaiJian --cfg ./cfgs/training/1hao_Dphm.toml'
 
-THRESHOLD = 6000
+# THRESHOLD = 6000
 THRESHOLD = 20000
 
 CHECK_REG = r'^.*--owner DaiJian.*$'

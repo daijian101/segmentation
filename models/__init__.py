@@ -1,4 +1,5 @@
 from jbag.models import UNetPlusPlus
+from jbag.models.unet import build_unet
 
 from models.ga_net import GANet
 
@@ -12,6 +13,7 @@ def build_ga_net(cfg):
 
 
 model_zoo = {
-    'ga_net": build_ga_net,
-    "unet_plus_plus": build_unet_plus_plus,
+    'ga_net': build_ga_net,
+    'unet_plus_plus': build_unet_plus_plus,
+    'unet': build_unet
 }

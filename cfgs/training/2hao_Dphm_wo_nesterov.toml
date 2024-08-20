@@ -1,16 +1,16 @@
-user_path = '/data/dj'
+user_path = '/data1/dj'
 data_path = '${user_path}/data/bca'
 
 train = true
 test = false
 
 is_ddp = false
-gpus = ['0']
+gpus = ['1']
 n_classes = 2
 
 label = 'Dphm'
 
-loss_criterion = 'dice'
+loss_criterion = 'dice_ce'
 lr = 1e-2
 epochs = 1000
 batch_size = 12
@@ -20,7 +20,7 @@ val_interval = 1
 
 checkpoint_saved_interval = 50
 
-snapshot = '${user_path}/running/bca_${label}_${loss_criterion}_epoch-${epochs}_dice'
+snapshot = '${user_path}/running/bca_${label}_${loss_criterion}_epoch-${epochs}_wo-ds-nesterov'
 
 # dataset
 dataset_property_file = '${data_path}/dataset/${label}_dataset_properties.json'
@@ -41,6 +41,7 @@ SMT = '${slice_path}/SMT'
 SMR = '${slice_path}/SMR'
 Sk = '${slice_path}/Sk'
 Dphm = '${slice_path}/Dphm'
+
 
 # for validation
 [volume_sample_dir]
@@ -134,8 +135,3 @@ affine = true
 eps = 1e-05
 [network.non_linear_kwargs]
 inplace = true
-[network.initialization]
-allow_init = true
-[network.initialization.params]
-a = 1e-2
-nonlinearity = 'leaky_relu'

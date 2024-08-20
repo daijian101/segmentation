@@ -1,4 +1,4 @@
-gpus = ["0"]
+gpus = ['1']
 batch_size = 10
 
 # BCA
@@ -14,49 +14,53 @@ batch_size = 10
 #boundary_file: /home/ubuntu/sdb1.8T/dj/data/W-DS1/boundaries.csv
 
 # 254
-IM0_path = "/data/BCA/W-DS20/W_DS20_onlyCT"
-volume_json_path = "/data/BCA/W-DS20/W_DS20_onlyCT_json"
-result_cavass_path = "/data/BCA/W-DS20_label"
+body_region = 'Thorax'
+
+inference_samples = ['N220-T-CT']
+
+IM0_path = '/data/dj/BCA-Trimmed-Refined/${body_region}_IM0'
+volume_json_path = '/data/dj/tmp/${body_region}_json'
+result_cavass_path = '/data/dj/tmp/missing_cases/${body_region}'
 convert_json = true
 
-inference_labels = ["IAM", "OAM", "Skn", "SMT", "SAT", "VAT"]
-#inference_labels = ["IAM"]
+inference_labels = ['Sk']
+#inference_labels = ['IAM']
 
-pretrained_model_zoo = "/data/dj/pretrained"
+pretrained_model_zoo = '/data/dj/pretrained'
 
 [labels.IAM]
-model = "unet_plus_plus"
-checkpoint = "${pretrained_model_zoo}/IAM_UNet++.pt"
-post_process = ["keeping_largest_region",]
+model = 'unet_plus_plus'
+checkpoint = '${pretrained_model_zoo}/IAM_UNet++.pt'
+post_process = ['keeping_largest_region',]
 
 [labels.OAM]
-model = "unet_plus_plus"
-checkpoint = "${pretrained_model_zoo}/OAM_UNet++.pt"
-post_process = ["keeping_largest_region", "filling"]
+model = 'unet_plus_plus'
+checkpoint = '${pretrained_model_zoo}/OAM_UNet++.pt'
+post_process = ['keeping_largest_region', 'filling']
 
 [labels.Skn]
-model = "unet_plus_plus"
-checkpoint = "${pretrained_model_zoo}/Skn_UNet++.pt"
-post_process = ["keeping_largest_region", "filling"]
+model = 'unet_plus_plus'
+checkpoint = '${pretrained_model_zoo}/Skn_UNet++.pt'
+post_process = ['keeping_largest_region', 'filling']
 
 [labels.SAT]
-model = "ga_net"
-checkpoint = "${pretrained_model_zoo}/SAT_GA-Net.pt"
+model = 'ga_net'
+checkpoint = '${pretrained_model_zoo}/SAT_GA-Net.pt'
 
 [labels.VAT]
-model = "ga_net"
-checkpoint = "${pretrained_model_zoo}/VAT_GA-Net.pt"
+model = 'ga_net'
+checkpoint = '${pretrained_model_zoo}/VAT_GA-Net.pt'
 
 [labels.Sk]
-model = "ga_net"
-checkpoint = "${pretrained_model_zoo}/Sk_GA-Net.pt"
+model = 'ga_net'
+checkpoint = '${pretrained_model_zoo}/Sk_GA-Net.pt'
 
 [labels.SMT]
-model = "ga_net"
-checkpoint = "${pretrained_model_zoo}/SMT_GA-Net.pt"
+model = 'ga_net'
+checkpoint = '${pretrained_model_zoo}/SMT_GA-Net.pt'
 
 [models.unet_plus_plus]
 batch_size = 30
 
 [models.ga_net]
-batch_size = 50
+batch_size = 20

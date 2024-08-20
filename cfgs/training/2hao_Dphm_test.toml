@@ -1,29 +1,34 @@
 user_path = '/data1/dj'
 data_path = '${user_path}/data/bca'
 
-is_distributed = true
-gpus = ['2', '3']
+train = false
+
+test = true
+save_test_segmentation_map = true
+is_distributed = false
+gpus = ['1']
 n_classes = 2
 
-label = 'SMT'
+label = 'Dphm'
 #tissue_label = 'Sk'
 #region_label = 'SMR'
 
+loss_criterion = 'dice_focal'
 # optimizer
 lr = 1e-2
 epochs = 100
-#batch_size = 12
-batch_size = 4
-#val_batch_size = 60
-val_batch_size = 10
+batch_size = 10
+val_batch_size = 25
 val_interval = 1
 
-snapshot = '${user_path}/running/bca_${label}'
+snapshot = '${user_path}/running/bca_${label}_${loss_criterion}_test'
+checkpoint = '${user_path}/running/bca_${label}_${loss_criterion}/best_val_checkpoint.pt'
 
 # dataset
 #boundary_file = '${data_path}/boundaries/Skn_boundary.csv'
 training_slice_txt = '${data_path}/dataset/${label}_training_slices.txt'
 val_ct_txt = '${data_path}/dataset/${label}_val_cts.txt'
+test_ct_txt = '${data_path}/dataset/${label}_val_cts.txt'
 
 # for training
 [slice_sample_dir]
@@ -43,6 +48,7 @@ Dphm = '${slice_path}/Dphm'
 [volume_sample_dir]
 volume_path = '${data_path}/json/volume'
 image = '${volume_path}/images'
+im0 = '${data_path}/cavass_data/images'
 SAT = '${volume_path}/SAT'
 VAT = '${volume_path}/VAT'
 SMT = '${volume_path}/SMT'

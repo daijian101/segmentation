@@ -7,14 +7,15 @@ import torch
 from jbag.checkpoint import load_checkpoint
 from jbag.config import get_config
 from jbag.io import read_txt_2_list, save_json, write_list_2_txt
-from jbag.transforms import ToType, ZscoreNormalization
+from jbag.transforms import ToType
+from jbag.transforms.normalization import ZscoreNormalization
 from torch.cuda.amp import autocast
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose
 from tqdm import tqdm
 
 from cfgs.args import parser
-from dataset.image_dataset import JSONImageDataset
+from dataset.dataset import ImageDataset
 from inference import inference_zoo
 from materials.meas_stds_const import BCA_MEAN, BCA_STD
 from models import model_zoo
@@ -28,8 +29,8 @@ def main():
         else:
             samples = cfg.inference_samples
     else:
-        # samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.endswith('.IM0')]
-        samples = [each for each in os.listdir(cfg.IM0_path)]
+        samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.endswith('.IM0')]
+        # samples = [each for each in os.listdir(cfg.IM0_path)]
         # samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('-CT') != -1 or each.find('-CT-') != -1]
 
     if cfg.convert_json:
@@ -40,8 +41,8 @@ def main():
             json_file = os.path.join(cfg.volume_json_path, f'{subject_name}.json')
             if os.path.exists(json_file):
                 continue
-            im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0")
-            # im0_file = os.path.join(cfg.IM0_path, f"{subject_name}.IM0")
+            # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0")
+            im0_file = os.path.join(cfg.IM0_path, f"{subject_name}.IM0")
             try:
                 image_data = cavass.read_cavass_file(im0_file)
             except OSError:
@@ -62,11 +63,11 @@ def main():
 
     tr_transforms = Compose([
         ToType(keys="data", dtype=np.float32),
-        ZscoreNormalization(keys="data", mean_value=BCA_MEAN, std_value=BCA_STD)
+        ZscoreNormalization(keys="data", mean=BCA_MEAN, std=BCA_STD)
     ])
-    dataset = JSONImageDataset(json_samples,
-                               cfg.volume_json_path,
-                               transforms=tr_transforms)
+    dataset = ImageDataset(json_samples,
+                           cfg.volume_json_path,
+                           transforms=tr_transforms)
     data_loader = DataLoader(dataset, 1)
 
     for target_label in tqdm(cfg.inference_labels):
@@ -108,13 +109,13 @@ def main():
 
             segmentation = post_process_compose(segmentation)
 
-            im0_file = os.path.join(cfg.IM0_path, subject_name, f"{subject_name}-CT.IM0")
-            # im0_file = os.path.join(cfg.IM0_path, f"{subject_name}.IM0")
+            # im0_file = os.path.join(cfg.IM0_path, subject_name, f"{subject_name}-CT.IM0")
+            im0_file = os.path.join(cfg.IM0_path, f"{subject_name}.IM0")
 
-            cavass.save_cavass_file(os.path.join(bim_save_path, subject_name, f"{subject_name}_{target_label}.BIM"),
-                                    segmentation, True, reference_file=im0_file)
+            # cavass.save_cavass_file(os.path.join(bim_save_path, subject_name, f"{subject_name}_{target_label}.BIM"),
+            #                         segmentation, True, reference_file=im0_file)
 
-            # cavass.save_cavass_file(os.path.join(bim_save_path, f"{subject_name}_{target_label}.BIM"), segmentation, True, reference_file=im0_file)
+            cavass.save_cavass_file(os.path.join(bim_save_path, f"{subject_name}_{target_label}.BIM"), segmentation, True, reference_file=im0_file)
 
 
 if __name__ == "__main__":
