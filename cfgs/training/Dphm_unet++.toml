@@ -58,9 +58,7 @@ benchmark = true
 deterministic = false
 
 # data transformer
-
 [training_data_augments.spatial_transform]
-# Spatial transform
 patch_size = [512, 512]
 patch_center_dist_from_border = 0
 random_crop = false
@@ -115,3 +113,19 @@ p_retain_stats = 1
 
 [network]
 architecture = 'unet++'
+input_channels = 1
+num_classes = 2
+conv_dim = 2
+norm_op = 'InstanceNorm'
+non_linear = 'relu'
+[network.norm_op_kwargs]
+affine = true
+eps = 1e-05
+[network.non_linear_kwargs]
+inplace = true
+[network.initialization]
+allow_init = true
+method = 'kaiming_initialize'
+[network.initialization.params]
+a = 0
+nonlinearity = 'relu'

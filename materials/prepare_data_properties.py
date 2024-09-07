@@ -6,7 +6,7 @@ from jbag.io import read_txt_2_list, save_json
 import numpy as np
 from tqdm import tqdm
 
-labels = ['SMT', 'Sk', 'Dphm']
+labels = ['OAM']
 for label in labels:
 
     training_images = read_txt_2_list(f'/data1/dj/data/bca/dataset/{label}_training_cts.txt')

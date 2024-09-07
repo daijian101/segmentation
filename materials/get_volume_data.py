@@ -13,7 +13,7 @@ im0_path = os.path.join(image_root_path, 'images')
 ct_saved_image_path = os.path.join(data_path, 'json/volume/images')
 label_saved_root_path = os.path.join(data_path, 'json/volume')
 
-label = 'Skn'
+label = 'OAM'
 
 labels = [label]
 cts = read_txt_2_list(os.path.join(data_path, f'dataset/{label}_val_cts.txt'))

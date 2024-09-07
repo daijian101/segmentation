@@ -17,7 +17,7 @@ im0_path = os.path.join(image_root_path, 'images')
 ct_saved_image_path = os.path.join(data_path, 'json/slices/images')
 label_saved_root_path =  os.path.join(data_path, 'json/slices')
 
-label = 'Skn'
+label = 'OAM'
 labels = [label]
 # boundary_dict = get_boundary(boundary_file)
 

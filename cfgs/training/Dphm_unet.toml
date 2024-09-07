@@ -5,7 +5,7 @@ train = true
 test = false
 
 is_ddp = false
-gpus = ['0']
+gpus = ['1']
 n_classes = 2
 
 label = 'Dphm'
@@ -20,7 +20,7 @@ val_interval = 1
 
 checkpoint_saved_interval = 50
 
-snapshot = '${user_path}/running/bca_${label}_${network.architecture}'
+snapshot = '${user_path}/running/bca_${label}_${network.architecture}_relu_instance-norm'
 
 # dataset
 dataset_property_file = '${data_path}/dataset/${label}_dataset_properties.json'
@@ -128,7 +128,7 @@ strides = [[1, 1], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2]]
 conv_bias = true
 non_linear_first = false
 norm_op = 'InstanceNorm'
-non_linear = 'leaky_relu'
+non_linear = 'relu'
 [network.norm_op_kwargs]
 affine = true
 eps = 1e-05
@@ -138,5 +138,6 @@ inplace = true
 allow_init = true
 method = 'kaiming_initialize'
 [network.initialization.params]
-a = 1e-2
-nonlinearity = 'leaky_relu'
+#a = 1e-2
+a = 0
+nonlinearity = 'relu'
