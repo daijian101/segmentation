@@ -20,10 +20,15 @@ def collect_foreground_intensities(image_file, label_file, n_foreground):
 
 if __name__ == '__main__':
     num_foreground_voxels_for_intensity_stats = 10e7
-    labels = ['OAM']
+    data_path = '/data1/dj/data/bca'
+    labels = ['SMT']
+    reference_label = ['SMR']
 
-    for label in labels:
-        label_path = f'/data1/dj/data/bca/cavass_data/{label}'
+    for i, label in enumerate(labels):
+        print('******************************')
+        print(f'label {label}, reference label {reference_label[i]}')
+        print('******************************')
+        label_path = os.path.join(data_path, f'cavass_data/{label}')
         all_label_files = os.listdir(label_path)
         num_foreground_voxels_per_image = int(num_foreground_voxels_for_intensity_stats / len(all_label_files))
         print(f'num_foreground_voxels_per_image_for_intensity_stats for {label}: {num_foreground_voxels_per_image}')
@@ -31,9 +36,9 @@ if __name__ == '__main__':
         with multiprocessing.get_context('fork').Pool(16) as p:
             for each in all_label_files:
                 ct_name = each[:-4]
-                image_file = f'/data1/dj/data/bca/cavass_data/images/{ct_name}.IM0'
-                label_files = os.path.join(label_path, each)
-                r.append(p.starmap_async(collect_foreground_intensities, ((image_file, label_files, num_foreground_voxels_per_image),)))
+                image_file = os.path.join(data_path, f'cavass_data/images/{ct_name}.IM0')
+                reference_label_file = os.path.join(data_path, f'cavass_data/{reference_label[i]}/{ct_name}.BIM')
+                r.append(p.starmap_async(collect_foreground_intensities, ((image_file, reference_label_file, num_foreground_voxels_per_image),)))
 
             remaining = list(range(len(all_label_files)))
             workers = [j for j in p._pool]
@@ -53,7 +58,7 @@ if __name__ == '__main__':
         std = np.std(all_chosen_intensities)
         percentile_0_5, percentile_99_5 = np.percentile(all_chosen_intensities, [0.5, 99.5])
 
-        dataset_properties = f'/data1/dj/data/bca/dataset/{label}_dataset_properties.json'
+        dataset_properties = os.path.join(data_path, f'dataset/{label}_dataset_properties.json')
         if os.path.exists(dataset_properties):
             properties = read_json(dataset_properties)
         else:
