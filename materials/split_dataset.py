@@ -5,7 +5,7 @@ from jbag.io import read_txt_2_list, write_list_2_txt
 
 data_path = '/data1/dj/data/bca'
 
-label = 'SMT'
+label = 'Sk'
 # all_data = read_txt_2_list(f'/data1/dj/data/bca/dataset/all_{label}.txt')
 all_data = [each[:-4] for each in os.listdir(os.path.join(data_path, f'cavass_data/{label}'))]
 random.shuffle(all_data)

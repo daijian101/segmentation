@@ -19,7 +19,7 @@ def get_image_property(subject_name):
     return subject_name, image_start, image_end, mask_start, mask_end
 
 
-labels = ['SMT']
+labels = ['Sk']
 for label in labels:
 
     training_images = read_txt_2_list(os.path.join(data_path, f'dataset/{label}_training_cts.txt'))

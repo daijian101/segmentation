@@ -21,7 +21,7 @@ def collect_foreground_intensities(image_file, label_file, n_foreground):
 if __name__ == '__main__':
     num_foreground_voxels_for_intensity_stats = 10e7
     data_path = '/data1/dj/data/bca'
-    labels = ['SMT']
+    labels = ['Sk']
     reference_label = ['SMR']
 
     for i, label in enumerate(labels):
