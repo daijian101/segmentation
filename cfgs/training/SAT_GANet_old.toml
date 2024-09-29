@@ -1,15 +1,15 @@
-user_path = '/home/cs14274101/dj'
+user_path = '/data/dj'
 data_path = '${user_path}/data/bca'
 
 train = true
 test = false
 
 is_ddp = false
-gpus = ['0']
+gpus = ['1']
 n_classes = 2
 
-tissue_label = 'VAT'
-region_label = 'IAM'
+tissue_label = 'SAT'
+region_label = 'SR'
 
 loss_criterion = 'dice_ce'
 lr = 1e-2
@@ -115,29 +115,4 @@ p_per_channel = 1
 p_retain_stats = 1
 
 [network]
-architecture = 'ganetnew'
-input_channels = 1
-num_classes = 2
-num_stages = 8
-conv_dim = 2
-num_features_per_stage = [32, 64, 128, 256, 512, 512, 512, 512]
-num_conv_per_stage_encoder = [2, 2, 2, 2, 2, 2, 2, 2]
-num_conv_per_stage_decoder = [2, 2, 2, 2, 2, 2, 2]
-kernel_sizes = [[3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3]]
-strides = [[1, 1], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2]]
-conv_bias = true
-non_linear_first = false
-norm_op = 'InstanceNorm'
-non_linear = 'relu'
-[network.norm_op_kwargs]
-affine = true
-eps = 1e-05
-[network.non_linear_kwargs]
-inplace = true
-[network.initialization]
-allow_init = true
-method = 'kaiming_initialize'
-[network.initialization.params]
-#a = 1e-2
-a = 0
-nonlinearity = 'relu'
+architecture = 'ganet'

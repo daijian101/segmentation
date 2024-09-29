@@ -5,7 +5,7 @@ train = true
 test = false
 
 is_ddp = false
-gpus = ['1']
+gpus = ['0']
 n_classes = 2
 
 label = 'SMT'

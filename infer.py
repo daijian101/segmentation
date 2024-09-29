@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from jbag.checkpoint import load_checkpoint
 from jbag.config import get_config
-from jbag.io import read_txt_2_list, save_json, write_list_2_txt
+from jbag.io import read_txt_2_list, save_json, write_list_2_txt, read_json
 from jbag.transforms import ToType
 from jbag.transforms.normalization import ZscoreNormalization
 from torch.cuda.amp import autocast
@@ -17,7 +17,6 @@ from tqdm import tqdm
 from cfgs.args import parser
 from dataset.dataset import ImageDataset
 from inference import inference_zoo
-from materials.meas_stds_const import BCA_MEAN, BCA_STD
 from models import model_zoo
 from post_process import PostProcessTransformCompose, post_process_methods
 
@@ -29,7 +28,7 @@ def main():
         else:
             samples = cfg.inference_samples
     else:
-        samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.endswith('.IM0')]
+        samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('PET') == -1]
         # samples = [each for each in os.listdir(cfg.IM0_path)]
         # samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('-CT') != -1 or each.find('-CT-') != -1]
 
@@ -41,7 +40,7 @@ def main():
             json_file = os.path.join(cfg.volume_json_path, f'{subject_name}.json')
             if os.path.exists(json_file):
                 continue
-            # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0")
+            # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0')
             im0_file = os.path.join(cfg.IM0_path, f"{subject_name}.IM0")
             try:
                 image_data = cavass.read_cavass_file(im0_file)
@@ -61,18 +60,33 @@ def main():
 
     json_samples = [f"{each}.json" for each in samples]
 
-    tr_transforms = Compose([
-        ToType(keys="data", dtype=np.float32),
-        ZscoreNormalization(keys="data", mean=BCA_MEAN, std=BCA_STD)
-    ])
-    dataset = ImageDataset(json_samples,
-                           cfg.volume_json_path,
-                           transforms=tr_transforms)
-    data_loader = DataLoader(dataset, 1)
-
     for target_label in tqdm(cfg.inference_labels):
+        # data_property = read_json(cfg.labels[target_label].data_property)
+
+        # tr_transforms = Compose([
+        #     ToType(keys='data', dtype=np.float32),
+        #     ZscoreNormalization(keys='data', mean=data_property['intensity_mean'],
+        #                         std=data_property['intensity_std'],
+        #                         lower_bound=data_property['intensity_0_5_percentile'],
+        #                         upper_bound=data_property['intensity_99_5_percentile']),
+        # ])
+
+        tr_transforms = Compose([
+                ToType(keys='data', dtype=np.float32),
+                ZscoreNormalization(keys='data', mean=968.353709587885,
+                                    std=213.19193991227968,
+                                    ),
+            ])
+
+        dataset = ImageDataset(json_samples,
+                               cfg.volume_json_path,
+                               transforms=tr_transforms)
+        data_loader = DataLoader(dataset, 1)
+
         model_name = cfg.labels[target_label].model
-        model = model_zoo[model_name](cfg.labels[target_label]).to(device)
+        # network_config = get_config(cfg.labels[target_label].network_config)
+        network_config = None
+        model = model_zoo[model_name](network_config).to(device)
         load_checkpoint(cfg.labels[target_label].checkpoint, model)
         inference_method = cfg.labels[target_label].inference_method if "inference_method" in cfg.labels[target_label] \
             else cfg.labels[target_label].model
@@ -80,13 +94,11 @@ def main():
         inference_method_extra_args = cfg.labels[target_label].inference_method_args if "inference_method_args" in \
                                                                                         cfg.labels[target_label] else {}
 
-        if "models" in cfg:
-            if model_name in cfg.models:
-                if "batch_size" in cfg.models[model_name]:
-                    inference_size = cfg.models[model_name].batch_size
+        if 'batch_size' in cfg.labels[target_label]:
+            batch_size = cfg.labels[target_label].batch_size
         else:
-            inference_size = cfg.batch_size
-        inference_ist = inference_zoo[inference_method](model, inference_size, device,
+            batch_size = cfg.batch_size
+        inference_ist = inference_zoo[inference_method](model, batch_size, device,
                                                         **inference_method_extra_args)
 
         bim_save_path = os.path.join(cfg.result_cavass_path, f"{target_label}")

@@ -144,7 +144,7 @@ class GADecoder(nn.Module):
         return x_tissue, x_region
 
 
-class GANet(nn.Module):
+class GANetNew(nn.Module):
     def __init__(self, input_channels: int,
                  num_classes: int,
                  num_stages: int,

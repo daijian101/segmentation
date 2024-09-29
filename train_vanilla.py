@@ -25,7 +25,7 @@ from jbag.transforms.spatial import SpatialTransform
 from medpy.metric import dc
 from tensorboardX import SummaryWriter
 from torch.backends import cudnn
-from torch.cuda.amp import autocast, GradScaler
+from torch.cuda.amp import GradScaler, autocast
 from torch.distributed import ReduceOp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import SGD
@@ -108,45 +108,45 @@ def main():
             AddChannel(keys=['data', cfg.label], dim=0),
             ToTensor(keys=['data', cfg.label]),
             SpatialTransform(keys=['data', cfg.label], apply_probability=1,
-                             patch_size=cfg.training_data_augments.spatial_transform.patch_size.as_primitive(),
+                             patch_size=cfg.training_data_augments.spatial_transform.patch_size,
                              patch_center_dist_from_border=cfg.training_data_augments.spatial_transform.patch_center_dist_from_border,
                              random_crop=cfg.training_data_augments.spatial_transform.random_crop,
                              interpolation_modes=['bilinear', 'nearest'],
                              p_rotation=cfg.training_data_augments.spatial_transform.p_rotation,
-                             rotation_angle_range=cfg.training_data_augments.spatial_transform.rotation.as_primitive(),
+                             rotation_angle_range=cfg.training_data_augments.spatial_transform.rotation,
                              p_scaling=cfg.training_data_augments.spatial_transform.p_scaling,
-                             scaling_range=cfg.training_data_augments.spatial_transform.scaling.as_primitive(),
+                             scaling_range=cfg.training_data_augments.spatial_transform.scaling,
                              p_synchronize_scaling_across_axes=cfg.training_data_augments.spatial_transform.p_synchronize_scaling_across_axes
                              ),
             GaussianNoiseTransform(keys=['data'],
                                    apply_probability=cfg.training_data_augments.gaussian_noise_transform.p,
-                                   noise_variance=cfg.training_data_augments.gaussian_noise_transform.noise_variance.as_primitive(),
+                                   noise_variance=cfg.training_data_augments.gaussian_noise_transform.noise_variance,
                                    synchronize_channels=cfg.training_data_augments.gaussian_noise_transform.synchronize_channels,
                                    p_per_channel=cfg.training_data_augments.gaussian_noise_transform.p_per_channel
                                    ),
             GaussianBlurTransform(keys=['data'],
                                   apply_probability=cfg.training_data_augments.gaussian_blur_transform.p,
-                                  blur_sigma=cfg.training_data_augments.gaussian_blur_transform.blur_sigma.as_primitive(),
+                                  blur_sigma=cfg.training_data_augments.gaussian_blur_transform.blur_sigma,
                                   synchronize_channels=cfg.training_data_augments.gaussian_blur_transform.synchronize_channels,
                                   synchronize_axes=cfg.training_data_augments.gaussian_blur_transform.synchronize_axes,
                                   p_per_channel=cfg.training_data_augments.gaussian_blur_transform.p_per_channel
                                   ),
             MultiplicativeBrightnessTransform(keys=['data'],
                                               apply_probability=cfg.training_data_augments.brightness_transform.p,
-                                              multiplier_range=cfg.training_data_augments.brightness_transform.multiplier_range.as_primitive(),
+                                              multiplier_range=cfg.training_data_augments.brightness_transform.multiplier_range,
                                               synchronize_channels=cfg.training_data_augments.brightness_transform.synchronize_channels,
                                               p_per_channel=cfg.training_data_augments.brightness_transform.p_per_channel
                                               ),
             ContrastTransform(keys=['data'],
                               apply_probability=cfg.training_data_augments.contrast_transform.p,
-                              contrast_range=cfg.training_data_augments.contrast_transform.contrast_range.as_primitive(),
+                              contrast_range=cfg.training_data_augments.contrast_transform.contrast_range,
                               preserve_range=cfg.training_data_augments.contrast_transform.preserve_range,
                               synchronize_channels=cfg.training_data_augments.contrast_transform.synchronize_channels,
                               p_per_channel=cfg.training_data_augments.contrast_transform.p_per_channel
                               ),
             GammaTransform(keys=['data'],
                            apply_probability=cfg.training_data_augments.gamma_transform1.p,
-                           gamma=cfg.training_data_augments.gamma_transform1.gamma.as_primitive(),
+                           gamma=cfg.training_data_augments.gamma_transform1.gamma,
                            p_invert_image=cfg.training_data_augments.gamma_transform1.p_invert_image,
                            synchronize_channels=cfg.training_data_augments.gamma_transform1.synchronize_channels,
                            p_per_channel=cfg.training_data_augments.gamma_transform1.p_per_channel,
@@ -154,7 +154,7 @@ def main():
                            ),
             GammaTransform(keys=['data'],
                            apply_probability=cfg.training_data_augments.gamma_transform2.p,
-                           gamma=cfg.training_data_augments.gamma_transform2.gamma.as_primitive(),
+                           gamma=cfg.training_data_augments.gamma_transform2.gamma,
                            p_invert_image=cfg.training_data_augments.gamma_transform2.p_invert_image,
                            synchronize_channels=cfg.training_data_augments.gamma_transform2.synchronize_channels,
                            p_per_channel=cfg.training_data_augments.gamma_transform2.p_per_channel,

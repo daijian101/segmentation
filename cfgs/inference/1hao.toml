@@ -1,32 +1,14 @@
-gpus = ['1']
-batch_size = 10
+gpus = ['0']
+batch_size = 50
 
-# BCA
-#data_path: /home/ubuntu/sdb1.8T/dj/data/bca
-#im0_path: ${data_path}/IM0
-#mat_path: /home/ubuntu/sdb1.8T/dj/bca_ct_mat_tmp
-#boundary_file: ${data_path}/boundaries.csv
-
-# W-DS1
-#data_path: /home/ubuntu/sdb1.8T/dj/data/bca
-#IM0_path: /home/ubuntu/sda1.8T/BCA/W-DS1/
-#mat_path: /home/ubuntu/sdb1.8T/dj/data/W-DS1/ct
-#boundary_file: /home/ubuntu/sdb1.8T/dj/data/W-DS1/boundaries.csv
-
-# 254
-body_region = 'Thorax'
-
-inference_samples = ['N220-T-CT']
-
-IM0_path = '/data/dj/BCA-Trimmed-Refined/${body_region}_IM0'
-volume_json_path = '/data/dj/tmp/${body_region}_json'
-result_cavass_path = '/data/dj/tmp/missing_cases/${body_region}'
+IM0_path = '/data/dj/wds11/IM0_PET_CT_part6'
+volume_json_path = '/data/dj/wds11/IM0_PET_CT_part6_json'
+result_cavass_path = '/data/dj/wds11/BIM/IM0_PET_CT_part6'
 convert_json = true
 
-inference_labels = ['Sk']
-#inference_labels = ['IAM']
+inference_labels = ['VAT', 'Sk']
 
-pretrained_model_zoo = '/data/dj/pretrained'
+pretrained_model_zoo = '/data/dj/bca_pretrained'
 
 [labels.IAM]
 model = 'unet_plus_plus'
@@ -40,27 +22,30 @@ post_process = ['keeping_largest_region', 'filling']
 
 [labels.Skn]
 model = 'unet_plus_plus'
-checkpoint = '${pretrained_model_zoo}/Skn_UNet++.pt'
+checkpoint = '${pretrained_model_zoo}/Skn/Skn_unet++.pt'
+network_config = '${pretrained_model_zoo}/Skn/network_config.toml'
+data_property = '${pretrained_model_zoo}/Skn/data_property.json'
 post_process = ['keeping_largest_region', 'filling']
-
-[labels.SAT]
-model = 'ga_net'
-checkpoint = '${pretrained_model_zoo}/SAT_GA-Net.pt'
-
-[labels.VAT]
-model = 'ga_net'
-checkpoint = '${pretrained_model_zoo}/VAT_GA-Net.pt'
-
-[labels.Sk]
-model = 'ga_net'
-checkpoint = '${pretrained_model_zoo}/Sk_GA-Net.pt'
-
-[labels.SMT]
-model = 'ga_net'
-checkpoint = '${pretrained_model_zoo}/SMT_GA-Net.pt'
-
-[models.unet_plus_plus]
 batch_size = 30
 
-[models.ga_net]
-batch_size = 20
+[labels.SAT]
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/SAT/SAT_ganet.pt'
+network_config = '${pretrained_model_zoo}/SAT/network_config.toml'
+data_property = '${pretrained_model_zoo}/SAT/data_property.json'
+batch_size = 50
+
+[labels.VAT]
+model = 'ganet'
+checkpoint = '/data/dj/pretrained/VAT_GA-Net.pt'
+
+[labels.Sk]
+model = 'ganet'
+checkpoint = '/data/dj/pretrained/Sk_GA-Net.pt'
+
+[labels.SMT]
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/SMT/SMT_ganet.pt'
+network_config = '${pretrained_model_zoo}/SMT/network_config.toml'
+data_property = '${pretrained_model_zoo}/SMT/data_property.json'
+batch_size = 50
