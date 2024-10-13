@@ -4,11 +4,10 @@ from jbag.models.unet_plus_plus import build_unet_plus_plus
 from jbag.models.utils import get_conv_op, get_norm_op, get_non_linear_op
 
 from models.ga_net import GANet
-from models.ga_net_new import GANetNew
 from jbag.config import Config
 
 
-def build_ganetnew(network_config: Config):
+def build_ganet(network_config: Config):
     conv_op = get_conv_op(network_config.conv_dim)
     norm_op = get_norm_op(network_config.norm_op, network_config.conv_dim)
     non_linear_op = get_non_linear_op(network_config.non_linear)
@@ -29,21 +28,14 @@ def build_ganetnew(network_config: Config):
               'non_linear_kwargs': network_config.non_linear_kwargs,
               'non_linear_first': network_config.non_linear_first,
               }
-    network = GANetNew(**params)
+    network = GANet(**params)
 
     initialize_network(network, network_config)
 
     return network
 
 
-def build_ganet(cfg):
-    network = GANet()
-    return network
-
-
 model_zoo = {
-    # 'ganet': build_ganet,
-    # 'ganetnew': build_ganetnew,
     'ganet': build_ganet,
     'unet_plus_plus': build_unet_plus_plus,
     'unet': build_unet
