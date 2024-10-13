@@ -1,4 +1,4 @@
-user_path = '/data/dj'
+user_path = '/data1/dj'
 data_path = '${user_path}/data/bca'
 
 train = true
@@ -8,26 +8,27 @@ is_ddp = false
 gpus = ['1']
 n_classes = 2
 
-label = 'SMT'
+tissue_label = 'Sk'
+region_label = 'SMR'
 
 loss_criterion = 'dice_ce'
 lr = 1e-2
 epochs = 1000
-batch_size = 10
+batch_size = 12
 n_iter_per_epoch = 250
-val_batch_size = 20
+val_batch_size = 50
 val_interval = 1
 
 checkpoint_saved_interval = 50
 
-snapshot = '${user_path}/running/bca_${label}_${network.architecture}'
+snapshot = '${user_path}/running/bca_${tissue_label}_${network.architecture}'
 
 # dataset
-dataset_property_file = '${data_path}/dataset/${label}_dataset_properties.json'
+dataset_property_file = '${data_path}/dataset/${tissue_label}_dataset_properties.json'
 
 #boundary_file = '${data_path}/boundaries/Skn_boundary.csv'
-training_slice_txt = '${data_path}/dataset/${label}_training_slices.txt'
-val_ct_txt = '${data_path}/dataset/${label}_val_cts.txt'
+training_slice_txt = '${data_path}/dataset/${tissue_label}_training_slices.txt'
+val_ct_txt = '${data_path}/dataset/${tissue_label}_val_cts.txt'
 
 # for training
 [slice_sample_dir]
@@ -41,7 +42,6 @@ SMT = '${slice_path}/SMT'
 SMR = '${slice_path}/SMR'
 Sk = '${slice_path}/Sk'
 Dphm = '${slice_path}/Dphm'
-Skn = '${slice_path}/Skn'
 
 # for validation
 [volume_sample_dir]
@@ -52,7 +52,6 @@ VAT = '${volume_path}/VAT'
 SMT = '${volume_path}/SMT'
 Sk = '${volume_path}/Sk'
 Dphm = '${volume_path}/Dphm'
-Skn = '${volume_path}/Skn'
 
 # Accelerator
 [cudnn]
@@ -60,7 +59,9 @@ benchmark = true
 deterministic = false
 
 # data transformer
+
 [training_data_augments.spatial_transform]
+# Spatial transform
 patch_size = [512, 512]
 patch_center_dist_from_border = 0
 random_crop = false
@@ -114,20 +115,4 @@ p_per_channel = 1
 p_retain_stats = 1
 
 [network]
-architecture = 'unet_plus_plus'
-input_channels = 1
-num_classes = 2
-conv_dim = 2
-norm_op = 'InstanceNorm'
-non_linear = 'relu'
-[network.norm_op_kwargs]
-affine = true
-eps = 1e-05
-[network.non_linear_kwargs]
-inplace = true
-[network.initialization]
-allow_init = true
-method = 'kaiming_initialize'
-[network.initialization.params]
-a = 0
-nonlinearity = 'relu'
+architecture = 'ganet'

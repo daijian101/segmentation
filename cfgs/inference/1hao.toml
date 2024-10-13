@@ -1,12 +1,12 @@
 gpus = ['0']
 batch_size = 50
 
-IM0_path = '/data/dj/wds11/IM0_PET_CT_part6'
-volume_json_path = '/data/dj/wds11/IM0_PET_CT_part6_json'
-result_cavass_path = '/data/dj/wds11/BIM/IM0_PET_CT_part6'
+IM0_path = '/data/dj/lymphoma_data/CT_images'
+volume_json_path = '/data/dj/lymphoma_data/CT_images_json'
+result_cavass_path = '/data/dj/lymphoma_data/CT_images_bim'
 convert_json = true
 
-inference_labels = ['VAT', 'Sk']
+inference_labels = ['Skn']
 
 pretrained_model_zoo = '/data/dj/bca_pretrained'
 

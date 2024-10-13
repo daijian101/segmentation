@@ -1,11 +1,11 @@
-user_path = '/data/dj'
+user_path = '/data1/dj'
 data_path = '${user_path}/data/bca'
 
 train = true
 test = false
 
 is_ddp = false
-gpus = ['1']
+gpus = ['0']
 n_classes = 2
 
 label = 'VAT'
