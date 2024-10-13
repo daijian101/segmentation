@@ -13,12 +13,30 @@ from torch.cuda.amp import autocast
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose
 from tqdm import tqdm
+from jbag.mp import fork
 
 from cfgs.args import parser
 from dataset.dataset import ImageDataset
 from inference import inference_zoo
 from models import model_zoo
 from post_process import PostProcessTransformCompose, post_process_methods
+
+
+def convert2json(subject_name, failure_samples):
+    json_file = os.path.join(cfg.volume_json_path, f'{subject_name}.json')
+    if os.path.exists(json_file):
+        return
+    # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0')
+    im0_file = os.path.join(cfg.IM0_path, f"{subject_name}.IM0")
+    try:
+        image_data = cavass.read_cavass_file(im0_file)
+    except OSError:
+        failure_samples.append(subject_name)
+        traceback.print_exc()
+        return
+
+    json_obj = {"data": image_data, "subject": subject_name}
+    save_json(json_file, json_obj)
 
 
 def main():
@@ -36,21 +54,11 @@ def main():
         # convert IM0 to json
         print('======Convert IM0 to JSON======')
         failure_samples = []
-        for subject_name in tqdm(samples):
-            json_file = os.path.join(cfg.volume_json_path, f'{subject_name}.json')
-            if os.path.exists(json_file):
-                continue
-            # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0')
-            im0_file = os.path.join(cfg.IM0_path, f"{subject_name}.IM0")
-            try:
-                image_data = cavass.read_cavass_file(im0_file)
-            except OSError:
-                failure_samples.append(subject_name)
-                traceback.print_exc()
-                continue
+        params = []
+        for subject_name in samples:
+            params.append((subject_name, failure_samples))
 
-            json_obj = {"data": image_data, "subject": subject_name}
-            save_json(json_file, json_obj)
+        fork(convert2json, 8, params)
 
         if failure_samples:
             samples = [each for each in samples if each not in failure_samples]
@@ -84,8 +92,7 @@ def main():
         data_loader = DataLoader(dataset, 1)
 
         model_name = cfg.labels[target_label].model
-        # network_config = get_config(cfg.labels[target_label].network_config)
-        network_config = None
+        network_config = get_config(cfg.labels[target_label].network_config)
         model = model_zoo[model_name](network_config).to(device)
         load_checkpoint(cfg.labels[target_label].checkpoint, model)
         inference_method = cfg.labels[target_label].inference_method if "inference_method" in cfg.labels[target_label] \
