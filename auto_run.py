@@ -34,8 +34,8 @@ def prepare_screen_session():
     if not is_exist:
         # Create new session
         os.system(f'screen -dmS {SCREEN_SESSION}')
-    os.system(f"screen -S {SCREEN_SESSION} -p 0 -X stuff 'conda activate py11\n'")
-    os.system(f"screen -S {SCREEN_SESSION} -p 0 -X stuff 'cd {WORKSPACE}\n'")
+    os.system(f'screen -S {SCREEN_SESSION} -p 0 -X stuff "conda activate py11\n"')
+    os.system(f'screen -S {SCREEN_SESSION} -p 0 -X stuff "cd {WORKSPACE}\n"')
     pass
 
 

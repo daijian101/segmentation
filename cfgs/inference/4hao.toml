@@ -1,4 +1,4 @@
-gpus = ["0"]
+gpus = ['0']
 batch_size = 60
 
 # BCA
@@ -14,43 +14,43 @@ batch_size = 60
 #boundary_file: /home/ubuntu/sdb1.8T/dj/data/W-DS1/boundaries.csv
 
 # 254
-IM0_path = "/data1/BCA/trimmed_abd"
+IM0_path = '/data1/BCA/trimmed_abd'
 
 convert_json = true
-volume_json_path = "/data1/BCA/trimmed_abd_json"
+volume_json_path = '/data1/BCA/trimmed_abd_json'
 
-result_cavass_path = "/data1/BCA/trimmed_abd_labels"
+result_cavass_path = '/data1/BCA/trimmed_abd_labels'
 
-inference_labels = ["SMT", "SAT", "VAT", "IAM", "OAM", "Skn"]
+inference_labels = ['SMT', 'SAT', 'VAT', 'IAM', 'OAM', 'Skn']
 
-pretrained_model_zoo = "/data1/dj/pretrained"
+pretrained_model_zoo = '/data1/dj/pretrained'
 
 [labels.IAM]
-model = "unet++"
-checkpoint = "${pretrained_model_zoo}/IAM_UNet++.pt"
+model = 'unet++'
+checkpoint = '${pretrained_model_zoo}/IAM_UNet++.pt'
 
 [labels.OAM]
-model = "unet++"
-checkpoint = "${pretrained_model_zoo}/OAM_UNet++.pt"
+model = 'unet++'
+checkpoint = '${pretrained_model_zoo}/OAM_UNet++.pt'
 
 [labels.Skn]
-model = "unet++"
-checkpoint = "${pretrained_model_zoo}/Skn_UNet++.pt"
+model = 'unet++'
+checkpoint = '${pretrained_model_zoo}/Skn_UNet++.pt'
 
 [labels.SAT]
-model = "ganet"
-checkpoint = "${pretrained_model_zoo}/SAT_GA-Net.pt"
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/SAT_GA-Net.pt'
 
 [labels.VAT]
-model = "ganet"
-checkpoint = "${pretrained_model_zoo}/VAT_GA-Net.pt"
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/VAT_GA-Net.pt'
 
 [labels.Sk]
-model = "ganet"
-checkpoint = "${pretrained_model_zoo}/Sk_GA-Net.pt"
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/Sk_GA-Net.pt'
 
 [labels.SMT]
-model = "ganet"
-checkpoint = "${pretrained_model_zoo}/SMT_GA-Net.pt"
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/SMT_GA-Net.pt'
 
 

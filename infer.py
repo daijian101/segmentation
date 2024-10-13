@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from jbag.checkpoint import load_checkpoint
 from jbag.config import get_config
-from jbag.io import read_txt_2_list, save_json, write_list_2_txt, read_json
+from jbag.io import read_txt2list, save_json, write_list2txt
 from jbag.transforms import ToType
 from jbag.transforms.normalization import ZscoreNormalization
 from torch.cuda.amp import autocast
@@ -27,7 +27,7 @@ def convert2json(subject_name, failure_samples):
     if os.path.exists(json_file):
         return
     # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0')
-    im0_file = os.path.join(cfg.IM0_path, f"{subject_name}.IM0")
+    im0_file = os.path.join(cfg.IM0_path, f'{subject_name}.IM0')
     try:
         image_data = cavass.read_cavass_file(im0_file)
     except OSError:
@@ -35,14 +35,14 @@ def convert2json(subject_name, failure_samples):
         traceback.print_exc()
         return
 
-    json_obj = {"data": image_data, "subject": subject_name}
+    json_obj = {'data': image_data, 'subject': subject_name}
     save_json(json_file, json_obj)
 
 
 def main():
     if 'inference_samples' in cfg:
         if isinstance(cfg.inference_samples, str):
-            samples = read_txt_2_list(cfg.inference_samples)
+            samples = read_txt2list(cfg.inference_samples)
         else:
             samples = cfg.inference_samples
     else:
@@ -62,11 +62,11 @@ def main():
 
         if failure_samples:
             samples = [each for each in samples if each not in failure_samples]
-            write_list_2_txt(os.path.join(cfg.result_cavass_path, "failure_samples.txt"), failure_samples)
+            write_list2txt(os.path.join(cfg.result_cavass_path, 'failure_samples.txt'), failure_samples)
 
-    print("======Infer subjects======")
+    print('======Infer subjects======')
 
-    json_samples = [f"{each}.json" for each in samples]
+    json_samples = [f'{each}.json' for each in samples]
 
     for target_label in tqdm(cfg.inference_labels):
         # data_property = read_json(cfg.labels[target_label].data_property)
@@ -95,10 +95,10 @@ def main():
         network_config = get_config(cfg.labels[target_label].network_config)
         model = model_zoo[model_name](network_config).to(device)
         load_checkpoint(cfg.labels[target_label].checkpoint, model)
-        inference_method = cfg.labels[target_label].inference_method if "inference_method" in cfg.labels[target_label] \
+        inference_method = cfg.labels[target_label].inference_method if 'inference_method' in cfg.labels[target_label] \
             else cfg.labels[target_label].model
 
-        inference_method_extra_args = cfg.labels[target_label].inference_method_args if "inference_method_args" in \
+        inference_method_extra_args = cfg.labels[target_label].inference_method_args if 'inference_method_args' in \
                                                                                         cfg.labels[target_label] else {}
 
         if 'batch_size' in cfg.labels[target_label]:
@@ -108,18 +108,18 @@ def main():
         inference_ist = inference_zoo[inference_method](model, batch_size, device,
                                                         **inference_method_extra_args)
 
-        bim_save_path = os.path.join(cfg.result_cavass_path, f"{target_label}")
+        bim_save_path = os.path.join(cfg.result_cavass_path, f'{target_label}')
 
         trs = []
-        if "post_process" in cfg.labels[target_label]:
-            for each_transform in cfg.labels[target_label]["post_process"]:
+        if 'post_process' in cfg.labels[target_label]:
+            for each_transform in cfg.labels[target_label]['post_process']:
                 trs.append(post_process_methods[each_transform]())
         post_process_compose = PostProcessTransformCompose(trs)
 
         for batch in tqdm(data_loader):
-            subject_name = batch["subject"][0]
+            subject_name = batch['subject'][0]
 
-            output_file_path = os.path.join(bim_save_path, f"{subject_name}_{target_label}.BIM")
+            output_file_path = os.path.join(bim_save_path, f'{subject_name}_{target_label}.BIM')
             if os.path.exists(output_file_path):
                 continue
             with autocast():
@@ -128,21 +128,21 @@ def main():
 
             segmentation = post_process_compose(segmentation)
 
-            # im0_file = os.path.join(cfg.IM0_path, subject_name, f"{subject_name}-CT.IM0")
-            im0_file = os.path.join(cfg.IM0_path, f"{subject_name}.IM0")
+            # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0')
+            im0_file = os.path.join(cfg.IM0_path, f'{subject_name}.IM0')
 
-            # cavass.save_cavass_file(os.path.join(bim_save_path, subject_name, f"{subject_name}_{target_label}.BIM"),
+            # cavass.save_cavass_file(os.path.join(bim_save_path, subject_name, f'{subject_name}_{target_label}.BIM'),
             #                         segmentation, True, reference_file=im0_file)
 
-            cavass.save_cavass_file(os.path.join(bim_save_path, f"{subject_name}_{target_label}.BIM"), segmentation, True, reference_file=im0_file)
+            cavass.save_cavass_file(os.path.join(bim_save_path, f'{subject_name}_{target_label}.BIM'), segmentation, True, reference_file=im0_file)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     args = parser.parse_args()
     cfg = get_config(args.cfg)
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(cfg.gpus)
+    os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(cfg.gpus)
     if torch.cuda.is_available():
-        device = torch.device("cuda")
+        device = torch.device('cuda')
     else:
-        device = torch.device("cpu")
+        device = torch.device('cpu')
     main()

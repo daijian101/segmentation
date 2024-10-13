@@ -27,22 +27,22 @@ class ImageDataset(Dataset):
         self.raw_data_dir = raw_data_dir
         self.label_dir_dict = label_dir_dict
         self.transforms = transforms
-        self.postfix = ".json" if add_postfix else ""
+        self.postfix = '.json' if add_postfix else ''
 
     def __getitem__(self, index):
         json_file = self.data_indices[index]
         image_obj = read_json(os.path.join(self.raw_data_dir, json_file + self.postfix))
-        image = image_obj["data"]
-        data = {"data": image}
-        subject = image_obj["subject"] if "subject" in image_obj else None
+        image = image_obj['data']
+        data = {'data': image}
+        subject = image_obj['subject'] if 'subject' in image_obj else None
         if subject is not None:
-            data["subject"] = subject
+            data['subject'] = subject
 
         if self.label_dir_dict:
             for label, label_dir in self.label_dir_dict.items():
                 label_file = os.path.join(label_dir, json_file + self.postfix)
                 label_obj = read_json(label_file)
-                label_data = label_obj["data"]
+                label_data = label_obj['data']
                 data[label] = label_data
 
         if self.transforms is not None:
@@ -96,18 +96,18 @@ class BalancedForegroundRegionDataset(Dataset):
 
         slice_image_file = os.path.join(self.raw_data_dir, f'{subject}_{slice_idx:0>3d}.json')
         image_obj = read_json(slice_image_file)
-        image = image_obj["data"]
-        data = {"data": image}
-        subject = image_obj["subject"] if "subject" in image_obj else None
+        image = image_obj['data']
+        data = {'data': image}
+        subject = image_obj['subject'] if 'subject' in image_obj else None
         if subject is not None:
-            data["subject"] = subject
+            data['subject'] = subject
 
         if self.label_dict:
             for label, label_dir in self.label_dict.items():
 
                 label_file = os.path.join(label_dir, f'{subject}_{slice_idx:0>3d}.json')
                 label_obj = read_json(label_file)
-                label_data = label_obj["data"]
+                label_data = label_obj['data']
                 data[label] = label_data
 
         if self.transforms is not None:

@@ -1,4 +1,4 @@
-gpus = ["3"]
+gpus = ['3']
 batch_size = 5
 
 # BCA
@@ -14,16 +14,16 @@ batch_size = 5
 #boundary_file: /home/ubuntu/sdb1.8T/dj/data/W-DS1/boundaries.csv
 
 # 254
-IM0_path = "/data1/dj/data/W-DS11-CT-Tiange/pet+ct/IMP0_PET_CT_reader_Part4_35subjects/IMP0_PET_CT_reader_Part4_35subjects"
+IM0_path = '/data1/dj/data/W-DS11-CT-Tiange/pet+ct/IMP0_PET_CT_reader_Part4_35subjects/IMP0_PET_CT_reader_Part4_35subjects'
 
 convert_json = true
-volume_json_path = "/data1/dj/data/W-DS11-CT-Tiange/pet+ct/IMP0_PET_CT_reader_Part4_35subjects/IMP0_PET_CT_reader_Part4_35subjects_json"
+volume_json_path = '/data1/dj/data/W-DS11-CT-Tiange/pet+ct/IMP0_PET_CT_reader_Part4_35subjects/IMP0_PET_CT_reader_Part4_35subjects_json'
 
-result_cavass_path = "/data1/dj/data/W-DS11-CT-Tiange/pet+ct/vaa_aim3_wds11_PET_CT_im0_labels/IMP0_PET_CT_reader_Part4_35subjects/IMP0_PET_CT_reader_Part4_35subjects_labels"
+result_cavass_path = '/data1/dj/data/W-DS11-CT-Tiange/pet+ct/vaa_aim3_wds11_PET_CT_im0_labels/IMP0_PET_CT_reader_Part4_35subjects/IMP0_PET_CT_reader_Part4_35subjects_labels'
 
-inference_labels = ["SAT", "VAT", "SMT"]
+inference_labels = ['SAT', 'VAT', 'SMT']
 
-pretrained_model_zoo = "/data1/dj/pretrained"
+pretrained_model_zoo = '/data1/dj/pretrained'
 
 [models.unet_plus_plus]
 batch_size = 10
@@ -32,31 +32,31 @@ batch_size = 10
 batch_size = 15
 
 [labels.IAM]
-model = "unet_plus_plus"
-checkpoint = "${pretrained_model_zoo}/IAM_UNet++.pt"
+model = 'unet_plus_plus'
+checkpoint = '${pretrained_model_zoo}/IAM_UNet++.pt'
 
 [labels.OAM]
-model = "unet_plus_plus"
-checkpoint = "${pretrained_model_zoo}/OAM_UNet++.pt"
+model = 'unet_plus_plus'
+checkpoint = '${pretrained_model_zoo}/OAM_UNet++.pt'
 
 [labels.Skn]
-model = "unet_plus_plus"
-checkpoint = "${pretrained_model_zoo}/Skn_UNet++.pt"
+model = 'unet_plus_plus'
+checkpoint = '${pretrained_model_zoo}/Skn_UNet++.pt'
 
 [labels.SAT]
-model = "ga_net"
-checkpoint = "${pretrained_model_zoo}/SAT_GA-Net.pt"
+model = 'ga_net'
+checkpoint = '${pretrained_model_zoo}/SAT_GA-Net.pt'
 
 [labels.VAT]
-model = "ga_net"
-checkpoint = "${pretrained_model_zoo}/VAT_GA-Net.pt"
+model = 'ga_net'
+checkpoint = '${pretrained_model_zoo}/VAT_GA-Net.pt'
 
 [labels.Sk]
-model = "ga_net"
-checkpoint = "${pretrained_model_zoo}/Sk_GA-Net.pt"
+model = 'ga_net'
+checkpoint = '${pretrained_model_zoo}/Sk_GA-Net.pt'
 
 [labels.SMT]
-model = "ga_net"
-checkpoint = "${pretrained_model_zoo}/SMT_GA-Net.pt"
+model = 'ga_net'
+checkpoint = '${pretrained_model_zoo}/SMT_GA-Net.pt'
 
 

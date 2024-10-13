@@ -13,7 +13,7 @@ samples = read_txt_2_list(f'/data/dj/data/bca/dataset/all_Sk.txt')
 label = 'Skn'
 missing_label_samples = []
 
-boundary_file = f"/data/dj/data/bca/boundaries/{label}_boundary.csv"
+boundary_file = f'/data/dj/data/bca/boundaries/{label}_boundary.csv'
 if os.path.exists(boundary_file):
     existing_df = read_csv(boundary_file)
     border_data = np.array(existing_df)
@@ -27,9 +27,9 @@ for ct in tqdm(samples):
     if ct in existing_subjects:
         continue
 
-    label_file = os.path.join(data_path, label, f"{ct}.BIM")
+    label_file = os.path.join(data_path, label, f'{ct}.BIM')
     if not os.path.exists(label_file):
-        print(f"label: {label}. label file is missing: {label_file}")
+        print(f'label: {label}. label file is missing: {label_file}')
         missing_label_samples.append(ct)
     label_data = read_cavass_file(label_file).astype(bool)
     inferior, superior = None, None
