@@ -57,7 +57,7 @@ def main():
                             std=dataset_properties['intensity_std'],
                             lower_bound=dataset_properties['intensity_0_5_percentile'],
                             upper_bound=dataset_properties['intensity_99_5_percentile']),
-        # GetBoundary(keys=['data', cfg.label], boundary_dict=boundary_dict)
+        AddChannel(keys=['data'], dim=0)
     ])
 
     log_dir = cfg.snapshot
@@ -65,25 +65,6 @@ def main():
     if is_master:
         vis_log_path = os.path.join(log_dir, 'log')
         vis_log = SummaryWriter(vis_log_path)
-
-    @torch.no_grad()
-    def infer_3d_volume(batch):
-        input = batch['data']
-        input = rearrange(input, 'b h w d -> (b d) h w')
-        batch_size = cfg.val_batch_size
-        batch_size = batch_size if batch_size < input.shape[1] else input.shape[1]
-        patch_size = (batch_size, input.size(1), input.size(2))
-        sampler = GridSampler(input, patch_size)
-
-        output = []
-        for patch in sampler:
-            patch = patch.unsqueeze(dim=1)
-            output_patch = network(patch.to(device))
-            output_patch = torch.argmax(output_patch, dim=1).to(torch.uint8).cpu()
-            output.append(output_patch)
-        output = sampler.restore(output)
-
-        return output
 
     def train():
         grad_scaler = GradScaler()
@@ -168,11 +149,11 @@ def main():
 
         tr_transforms = Compose(tr_transforms)
 
-        training_dataset = BalancedForegroundRegionDataset(data_indices=training_samples,
-                                                           image_properties=dataset_properties['image_properties'],
-                                                           raw_data_dir=training_image_dir,
-                                                           label_dir_dict=training_label_dict,
-                                                           transforms=tr_transforms)
+        training_dataset = ImageDataset(data_indices=training_samples,
+                                        raw_data_dir=training_image_dir,
+                                        label_dir_dict=training_label_dict,
+                                        add_postfix=False,
+                                        transforms=tr_transforms)
 
         if is_ddp:
             training_data_sampler = DistributedSampler(training_dataset)
@@ -192,18 +173,17 @@ def main():
 
         # val dataset and data loader
         val_samples = dataset_properties['val_dataset']
-        volume_image_dir = cfg.volume_sample_dir.image
-        val_label_dict = {cfg.label: cfg.volume_sample_dir[cfg.label]}
+        val_image_dir = cfg.slice_sample_dir.image
+        val_label_dict = {cfg.label: cfg.slice_sample_dir[cfg.label]}
 
-        # boundary_dict = get_boundary(cfg.boundary_file)
         val_dataset = ImageDataset(data_indices=val_samples,
-                                   raw_data_dir=volume_image_dir,
+                                   raw_data_dir=val_image_dir,
                                    label_dir_dict=val_label_dict,
-                                   add_postfix=True,
+                                   add_postfix=False,
                                    transforms=val_test_transforms)
 
         val_data_sampler = DistributedSampler(val_dataset, shuffle=False) if is_ddp else None
-        val_data_loader = DataLoader(val_dataset, 1, sampler=val_data_sampler)
+        val_data_loader = DataLoader(val_dataset, cfg.val_batch_size, sampler=val_data_sampler, num_workers=4, pin_memory=True)
 
         best_val_dice = 0
         iteration = 0
@@ -264,17 +244,15 @@ def main():
                 set_deep_supervision(network, False)
                 dice_metric.reset()
                 val_bar = tqdm(val_data_loader, postfix={'epoch': epoch, 'rank': world_rank})
-                for batch in val_bar:
-                    with autocast():
-                        output = infer_3d_volume(batch)
-                    output = rearrange(output, 'd h w -> 1 h w d')
-                    target = batch[cfg.label]
-
-                    output = output.squeeze(0).cpu().numpy()
-                    target = target.squeeze(0).cpu().numpy()
-
-                    dice_metric(output, target)
-                    val_bar.postfix = f'epoch: {epoch} rank: {world_rank} dice: {dice_metric.mean()}'
+                with torch.no_grad():
+                    for batch in val_bar:
+                        image = batch['data']
+                        with autocast():
+                            output = network(image.to(device))
+                        output = torch.argmax(output, dim=1).cpu().numpy()
+                        target = batch[cfg.label].numpy()
+                        dice_metric(output, target)
+                        val_bar.postfix = f'epoch: {epoch} rank: {world_rank} dice: {dice_metric.mean()}'
 
                 mean_val_dice_score = dice_metric.mean()
                 if is_ddp:
@@ -291,60 +269,16 @@ def main():
             if is_ddp:
                 dist.barrier()
 
-            if epoch != 0 and epoch % cfg.checkpoint_saved_interval == 0:
-                saved_parameters = {'epoch': epoch, 'grad_scaler': grad_scaler.state_dict(),
-                                    'lr_scheduler': poly_lr.state_dict()}
-                if is_master:
-                    saved_parameters['best_val_dice'] = best_val_dice
-                save_checkpoint(os.path.join(log_dir, 'checkpoint', f'checkpoint_{epoch}.pth'), network, optimizer,
-                                **saved_parameters)
-
-    def test():
-        load_checkpoint(cfg.checkpoint, network)
-        test_sample = read_txt2list(cfg.test_ct_txt)
-        volume_image_dir = cfg.volume_sample_dir.image
-        test_label_dict = {cfg.label: cfg.volume_sample_dir[cfg.label]}
-
-        test_dataset = ImageDataset(data_indices=test_sample,
-                                    raw_data_dir=volume_image_dir,
-                                    label_dir_dict=test_label_dict,
-                                    add_postfix=True,
-                                    transforms=val_test_transforms)
-
-        test_data_loader = DataLoader(test_dataset, 1)
-
-        # test
-        dice_metric = MetricSummary(metric_fn=dc)
-        network.eval()
-        set_deep_supervision(network, False)
-        dice_metric.reset()
-        for batch in tqdm(test_data_loader):
-            subject_name = batch['subject'][0]
-            with autocast():
-                output = infer_3d_volume(batch)
-            output = rearrange(output, 'd h w -> 1 h w d')
-            target = batch[cfg.label]
-
-            output = output.squeeze(0).cpu().numpy()
-            target = target.squeeze(0).cpu().numpy()
-
-            dsc = dice_metric(output, target)
-            vis_log.add_scalar(f'test/{subject_name}/dsc', dsc)
-
-            if cfg.save_test_segmentation_map:
-                output = output.squeeze()
-                im0_file = os.path.join(cfg.volume_sample_dir.im0, subject_name + '.IM0')
-                save_file = os.path.join(log_dir, 'test_result', f'{subject_name}_{cfg.label}.BIM')
-                save_cavass_file(save_file, output, True, reference_file=im0_file)
-
-        vis_log.add_scalar('test dice/mean', dice_metric.mean(), )
-        vis_log.add_scalar('test dice/std', dice_metric.std(), )
+            # if epoch != 0 and epoch % cfg.checkpoint_saved_interval == 0:
+            #     saved_parameters = {'epoch': epoch, 'grad_scaler': grad_scaler.state_dict(),
+            #                         'lr_scheduler': poly_lr.state_dict()}
+            #     if is_master:
+            #         saved_parameters['best_val_dice'] = best_val_dice
+            #     save_checkpoint(os.path.join(log_dir, 'checkpoint', f'checkpoint_{epoch}.pth'), network, optimizer,
+            #                     **saved_parameters)
 
     if cfg.train:
         train()
-
-    if cfg.test:
-        test()
 
     if is_master:
         vis_log.close()

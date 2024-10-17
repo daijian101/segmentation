@@ -4,6 +4,8 @@ batch_size = 50
 IM0_path = '/data1/dj/lymphoma_data/CT_images'
 volume_json_path = '/data1/dj/lymphoma_data/CT_images_json'
 result_cavass_path = '/data1/dj/lymphoma_data/CT_images_bim'
+
+inference_samples = ['DLBCL273PC1-CT', 'DLBCL121PC1-CT']
 convert_json = true
 
 inference_labels = ['Skn']
@@ -26,7 +28,7 @@ checkpoint = '${pretrained_model_zoo}/Skn/Skn_unet++.pt'
 network_config = '${pretrained_model_zoo}/Skn/network_config.toml'
 data_property = '${pretrained_model_zoo}/Skn/data_property.json'
 post_process = ['keeping_largest_region', 'filling']
-batch_size = 30
+batch_size = 2
 
 [labels.SAT]
 model = 'ganet'

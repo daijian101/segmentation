@@ -6,7 +6,7 @@ import numpy as np
 import torch
 from jbag.checkpoint import load_checkpoint
 from jbag.config import get_config
-from jbag.io import read_txt2list, save_json, write_list2txt
+from jbag.io import read_txt2list, save_json, write_list2txt, read_json
 from jbag.transforms import ToType
 from jbag.transforms.normalization import ZscoreNormalization
 from torch.cuda.amp import autocast
@@ -55,8 +55,8 @@ def main():
         print('======Convert IM0 to JSON======')
         failure_samples = []
         params = []
-        for subject_name in samples:
-            params.append((subject_name, failure_samples))
+        for sample in samples:
+            params.append((sample, failure_samples))
 
         fork(convert2json, 8, params)
 
@@ -69,22 +69,15 @@ def main():
     json_samples = [f'{each}.json' for each in samples]
 
     for target_label in tqdm(cfg.inference_labels):
-        # data_property = read_json(cfg.labels[target_label].data_property)
-
-        # tr_transforms = Compose([
-        #     ToType(keys='data', dtype=np.float32),
-        #     ZscoreNormalization(keys='data', mean=data_property['intensity_mean'],
-        #                         std=data_property['intensity_std'],
-        #                         lower_bound=data_property['intensity_0_5_percentile'],
-        #                         upper_bound=data_property['intensity_99_5_percentile']),
-        # ])
+        data_property = read_json(cfg.labels[target_label].data_property)
 
         tr_transforms = Compose([
-                ToType(keys='data', dtype=np.float32),
-                ZscoreNormalization(keys='data', mean=968.353709587885,
-                                    std=213.19193991227968,
-                                    ),
-            ])
+            ToType(keys='data', dtype=np.float32),
+            ZscoreNormalization(keys='data', mean=data_property['intensity_mean'],
+                                std=data_property['intensity_std'],
+                                lower_bound=data_property['intensity_0_5_percentile'],
+                                upper_bound=data_property['intensity_99_5_percentile']),
+        ])
 
         dataset = ImageDataset(json_samples,
                                cfg.volume_json_path,
@@ -117,9 +110,9 @@ def main():
         post_process_compose = PostProcessTransformCompose(trs)
 
         for batch in tqdm(data_loader):
-            subject_name = batch['subject'][0]
+            sample = batch['subject'][0]
 
-            output_file_path = os.path.join(bim_save_path, f'{subject_name}_{target_label}.BIM')
+            output_file_path = os.path.join(bim_save_path, f'{sample}_{target_label}.BIM')
             if os.path.exists(output_file_path):
                 continue
             with autocast():
@@ -129,12 +122,12 @@ def main():
             segmentation = post_process_compose(segmentation)
 
             # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0')
-            im0_file = os.path.join(cfg.IM0_path, f'{subject_name}.IM0')
+            im0_file = os.path.join(cfg.IM0_path, f'{sample}.IM0')
 
             # cavass.save_cavass_file(os.path.join(bim_save_path, subject_name, f'{subject_name}_{target_label}.BIM'),
             #                         segmentation, True, reference_file=im0_file)
 
-            cavass.save_cavass_file(os.path.join(bim_save_path, f'{subject_name}_{target_label}.BIM'), segmentation, True, reference_file=im0_file)
+            cavass.save_cavass_file(os.path.join(bim_save_path, f'{sample}_{target_label}.BIM'), segmentation, True, reference_file=im0_file)
 
 
 if __name__ == '__main__':
