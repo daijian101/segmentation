@@ -22,20 +22,20 @@ from models import model_zoo
 from post_process import PostProcessTransformCompose, post_process_methods
 
 
-def convert2json(subject_name, failure_samples):
-    json_file = os.path.join(cfg.volume_json_path, f'{subject_name}.json')
+def convert2json(study_index, failure_samples):
+    json_file = os.path.join(cfg.volume_json_path, f'{study_index}.json')
     if os.path.exists(json_file):
         return
-    # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0')
-    im0_file = os.path.join(cfg.IM0_path, f'{subject_name}.IM0')
+    im0_file = os.path.join(cfg.IM0_path, study_index, f'{study_index}-CT.IM0')
+    # im0_file = os.path.join(cfg.IM0_path, f'{study_index}.IM0')
     try:
         image_data = cavass.read_cavass_file(im0_file)
     except OSError:
-        failure_samples.append(subject_name)
+        failure_samples.append(study_index)
         traceback.print_exc()
         return
 
-    json_obj = {'data': image_data, 'subject': subject_name}
+    json_obj = {'data': image_data, 'subject': study_index}
     save_json(json_file, json_obj)
 
 
@@ -46,8 +46,8 @@ def main():
         else:
             samples = cfg.inference_samples
     else:
-        samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('PET') == -1]
-        # samples = [each for each in os.listdir(cfg.IM0_path)]
+        # samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('PET') == -1]
+        samples = [each for each in os.listdir(cfg.IM0_path)]
         # samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('-CT') != -1 or each.find('-CT-') != -1]
 
     if cfg.convert_json:
@@ -110,9 +110,9 @@ def main():
         post_process_compose = PostProcessTransformCompose(trs)
 
         for batch in tqdm(data_loader):
-            sample = batch['subject'][0]
+            study_index = batch['subject'][0]
 
-            output_file_path = os.path.join(bim_save_path, f'{sample}_{target_label}.BIM')
+            output_file_path = os.path.join(bim_save_path, f'{study_index}_{target_label}.BIM')
             if os.path.exists(output_file_path):
                 continue
             with autocast():
@@ -121,13 +121,13 @@ def main():
 
             segmentation = post_process_compose(segmentation)
 
-            # im0_file = os.path.join(cfg.IM0_path, subject_name, f'{subject_name}-CT.IM0')
-            im0_file = os.path.join(cfg.IM0_path, f'{sample}.IM0')
+            im0_file = os.path.join(cfg.IM0_path, study_index, f'{study_index}-CT.IM0')
+            # im0_file = os.path.join(cfg.IM0_path, f'{study_index}.IM0')
 
             # cavass.save_cavass_file(os.path.join(bim_save_path, subject_name, f'{subject_name}_{target_label}.BIM'),
             #                         segmentation, True, reference_file=im0_file)
 
-            cavass.save_cavass_file(os.path.join(bim_save_path, f'{sample}_{target_label}.BIM'), segmentation, True, reference_file=im0_file)
+            cavass.save_cavass_file(os.path.join(bim_save_path, f'{study_index}_{target_label}.BIM'), segmentation, True, reference_file=im0_file)
 
 
 if __name__ == '__main__':
