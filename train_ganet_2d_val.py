@@ -3,20 +3,14 @@ import os
 import numpy as np
 import torch
 import torch.distributed as dist
-from cavass.ops import save_cavass_file
-from einops import rearrange
 from jbag import MetricSummary
 from jbag import logger
 from jbag.checkpoint import load_checkpoint, save_checkpoint
 from jbag.config import get_config
-from jbag.io import read_txt2list, read_json
-from jbag.models.deep_supervision import DeepSupervisionLossWrapper, get_deep_supervision_loss_weights, \
-    set_deep_supervision, get_deep_supervision_scales
-from jbag.samplers import GridSampler
+from jbag.io import read_json
 from jbag.transforms import ToType, AddChannel, ToTensor
 from jbag.transforms.brightness import MultiplicativeBrightnessTransform
 from jbag.transforms.contrast import ContrastTransform
-from jbag.transforms.downsample import DownsampleTransform
 from jbag.transforms.gamma import GammaTransform
 from jbag.transforms.gaussian_blur import GaussianBlurTransform
 from jbag.transforms.gaussian_noise import GaussianNoiseTransform
@@ -36,7 +30,7 @@ from torchvision.transforms import Compose
 from tqdm import tqdm, trange
 
 from cfgs.args import parser
-from dataset.dataset import ImageDataset, BalancedForegroundRegionDataset
+from dataset.dataset import ImageDataset
 from loss_criterions import get_loss_criterion
 from models import model_zoo
 
@@ -57,7 +51,7 @@ def main():
                             std=dataset_properties['intensity_std'],
                             lower_bound=dataset_properties['intensity_0_5_percentile'],
                             upper_bound=dataset_properties['intensity_99_5_percentile']),
-        AddChannel(keys=['data'], axis=0)
+        AddChannel(keys=['data'], axis=0),
     ])
 
     log_dir = cfg.snapshot
@@ -75,10 +69,13 @@ def main():
         if 'checkpoint' in cfg and cfg.checkpoint:
             load_checkpoint(cfg.checkpoint, network)
 
-        # dataloader
-        training_samples = dataset_properties['training_dataset']
+        # data loader
+        training_samples = dataset_properties['training_set']
         image_dir = cfg.slice_sample_dir.image
-        label_dir_dict = {cfg.label: cfg.slice_sample_dir[cfg.label]}
+        tissue_label = cfg.tissue_label
+        region_label = cfg.region_label
+        label_dict = {tissue_label: cfg.slice_sample_dir[tissue_label],
+                               region_label: cfg.slice_sample_dir[region_label]}
 
         tr_transforms = [
             ToType(keys='data', dtype=np.float32),
@@ -86,13 +83,13 @@ def main():
                                 std=dataset_properties['intensity_std'],
                                 lower_bound=dataset_properties['intensity_0_5_percentile'],
                                 upper_bound=dataset_properties['intensity_99_5_percentile']),
-            AddChannel(keys=['data', cfg.label], axis=0),
-            ToTensor(keys=['data', cfg.label]),
-            SpatialTransform(keys=['data', cfg.label], apply_probability=1,
+            AddChannel(keys=['data', tissue_label, region_label], axis=0),
+            ToTensor(keys=['data', tissue_label, region_label]),
+            SpatialTransform(keys=['data', tissue_label, region_label], apply_probability=1,
                              patch_size=cfg.training_data_augments.spatial_transform.patch_size,
                              patch_center_dist_from_border=cfg.training_data_augments.spatial_transform.patch_center_dist_from_border,
                              random_crop=cfg.training_data_augments.spatial_transform.random_crop,
-                             interpolation_modes=['bilinear', 'nearest'],
+                             interpolation_modes=['bilinear', 'nearest', 'nearest'],
                              p_rotation=cfg.training_data_augments.spatial_transform.p_rotation,
                              rotation_angle_range=cfg.training_data_augments.spatial_transform.rotation,
                              p_scaling=cfg.training_data_augments.spatial_transform.p_scaling,
@@ -142,17 +139,12 @@ def main():
                            p_retain_stats=cfg.training_data_augments.gamma_transform2.p_retain_stats
                            ),
         ]
-
-        deep_supervision = 'deep_supervision' in cfg.network and cfg.network.deep_supervision
-        if deep_supervision:
-            tr_transforms.append(DownsampleTransform(keys=[cfg.label], scales=get_deep_supervision_scales(cfg)))
-
         tr_transforms = Compose(tr_transforms)
 
         training_dataset = ImageDataset(data_indices=training_samples,
                                         raw_data_dir=image_dir,
-                                        label_dir_dict=label_dir_dict,
-                                        add_postfix=False,
+                                        label_dir_dict=label_dict,
+                                        add_postfix=True,
                                         transforms=tr_transforms)
 
         if is_ddp:
@@ -172,12 +164,13 @@ def main():
         training_data_iterator = iter(training_data_loader)
 
         # val dataset and data loader
-        val_samples = dataset_properties['val_dataset']
+        val_samples = dataset_properties['val_set']
 
+        # boundary_dict = get_boundary(cfg.boundary_file)
         val_dataset = ImageDataset(data_indices=val_samples,
                                    raw_data_dir=image_dir,
-                                   label_dir_dict=label_dir_dict,
-                                   add_postfix=False,
+                                   label_dir_dict=label_dict,
+                                   add_postfix=True,
                                    transforms=val_test_transforms)
 
         val_data_sampler = DistributedSampler(val_dataset, shuffle=False) if is_ddp else None
@@ -188,10 +181,9 @@ def main():
 
         # Train
         loss_criterion: torch.nn.Module = get_loss_criterion(cfg.loss_criterion)(to_onehot_y=True, softmax=True)
-        if deep_supervision:
-            loss_weights = get_deep_supervision_loss_weights(cfg)
-            loss_criterion = DeepSupervisionLossWrapper(loss_criterion, loss_weights)
-        dice_metric = MetricSummary(metric_fn=dc)
+
+        tissue_dice_metric = MetricSummary(metric_fn=dc)
+        region_dice_metric = MetricSummary(metric_fn=dc)
         val_interval = cfg.val_interval if 'val_interval' in cfg else 1
         epoch_bar = trange(0, cfg.epochs, postfix={'rank': world_rank})
         loss_summary = MetricSummary()
@@ -202,9 +194,6 @@ def main():
                 vis_log.add_scalar('lr', poly_lr.get_last_lr()[0], epoch)
 
             network.train()
-            # insure deep supervision
-            if deep_supervision:
-                set_deep_supervision(network, True)
             batch_bar = trange(0, cfg.n_iter_per_epoch, postfix={'rank': world_rank})
             for _ in batch_bar:
                 try:
@@ -215,14 +204,18 @@ def main():
 
                 optimizer.zero_grad()
                 image = batch['data']
-                gt_label = batch[cfg.label]
+                tissue_gt = batch[tissue_label]
+                region_gt = batch[region_label]
                 with autocast():
-                    output = network(image.to(device))
-                    if deep_supervision:
-                        gt_label = [each.to(device) for each in gt_label]
+                    tissue_output, region_output = network(image.to(device))
+                    tissue_gt = tissue_gt.to(device)
+                    region_gt = region_gt.to(device)
+                    tissue_loss = loss_criterion(tissue_output, tissue_gt)
+                    region_loss = loss_criterion(region_output, region_gt)
+                    if epoch < cfg.start_unbalance_loss_epoch:
+                        loss = 0.5 * tissue_loss + 0.5 * region_loss
                     else:
-                        gt_label = gt_label.to(device)
-                    loss = loss_criterion(output, gt_label)
+                        loss = cfg.tissue_loss_ratio * tissue_loss + cfg.region_loss_ratio * region_loss
                 grad_scaler.scale(loss).backward()
                 grad_scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(network.parameters(), 12)
@@ -231,7 +224,8 @@ def main():
                 loss_scalar = loss.detach().cpu()
                 loss_summary.add_value(loss_scalar)
                 if is_master:
-                    vis_log.add_scalar('loss', loss_scalar, iteration)
+                    vis_log.add_scalar('loss/tissue', tissue_loss.detach().cpu(), iteration)
+                    vis_log.add_scalar('loss/region', region_loss.detach().cpu(), iteration)
                 iteration += 1
                 batch_bar.postfix = f'epoch: {epoch} rank: {world_rank} loss: {loss_summary.mean():.5f}'
 
@@ -239,27 +233,39 @@ def main():
             # validate epoch
             if epoch % val_interval == 0:
                 network.eval()
-                set_deep_supervision(network, False)
-                dice_metric.reset()
+                tissue_dice_metric.reset()
+                region_dice_metric.reset()
                 val_bar = tqdm(val_data_loader, postfix={'epoch': epoch, 'rank': world_rank})
-                with torch.no_grad():
-                    for batch in val_bar:
-                        image = batch['data']
+                for batch in val_bar:
+                    image = batch['data']
+                    with torch.no_grad():
                         with autocast():
-                            output = network(image.to(device))
-                        output = torch.argmax(output, dim=1).cpu().numpy()
-                        target = batch[cfg.label].numpy()
-                        dice_metric(output, target)
-                        val_bar.postfix = f'epoch: {epoch} rank: {world_rank} dice: {dice_metric.mean()}'
+                            tissue_output, region_output = network(image.to(device))
+                    tissue_output = torch.argmax(tissue_output, dim=1).cpu().numpy()
+                    region_output = torch.argmax(region_output, dim=1).cpu().numpy()
 
-                mean_val_dice_score = dice_metric.mean()
+                    tissue_target = batch[tissue_label].numpy()
+                    region_target = batch[region_label].numpy()
+
+                    tissue_dice_metric(tissue_output, tissue_target)
+                    region_dice_metric(region_output, region_target)
+                    val_bar.postfix = f'epoch: {epoch} rank: {world_rank} dice: {tissue_dice_metric.mean()}'
+
+                mean_val_tissue_dice_score = tissue_dice_metric.mean()
+                mean_val_region_dice_score = region_dice_metric.mean()
                 if is_ddp:
-                    mean_val_dice_score = torch.tensor(mean_val_dice_score, device=device)
-                    dist.all_reduce(mean_val_dice_score, op=ReduceOp.AVG)
+                    mean_val_tissue_dice_score = torch.tensor(mean_val_tissue_dice_score, device=device)
+                    dist.all_reduce(mean_val_tissue_dice_score, op=ReduceOp.AVG)
+
+                    mean_val_region_dice_score = torch.tensor(mean_val_region_dice_score, device=device)
+                    dist.all_reduce(mean_val_region_dice_score, op=ReduceOp.AVG)
                 if is_master:
-                    vis_log.add_scalar('val dice', mean_val_dice_score, epoch)
-                    if mean_val_dice_score >= best_val_dice:
-                        best_val_dice = mean_val_dice_score
+                    vis_log.add_scalar('val tissue dice', mean_val_tissue_dice_score, epoch)
+                    vis_log.add_scalar('val region dice', mean_val_region_dice_score, epoch)
+                    logger.info(f'Epoch {epoch}. Validation tissue dice is {mean_val_tissue_dice_score}')
+                    logger.info(f'Epoch {epoch}. Validation region dice is {mean_val_region_dice_score}')
+                    if mean_val_tissue_dice_score >= best_val_dice:
+                        best_val_dice = mean_val_tissue_dice_score
                         save_checkpoint(os.path.join(log_dir, 'best_val_checkpoint.pt'), network)
 
                         vis_log.add_scalar('snapshot/epoch', epoch, epoch)
@@ -274,6 +280,7 @@ def main():
             #         saved_parameters['best_val_dice'] = best_val_dice
             #     save_checkpoint(os.path.join(log_dir, 'checkpoint', f'checkpoint_{epoch}.pth'), network, optimizer,
             #                     **saved_parameters)
+
 
     if cfg.train:
         train()

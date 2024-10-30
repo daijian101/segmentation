@@ -2,29 +2,32 @@ user_path = '/data1/dj'
 data_path = '${user_path}/data/bca'
 
 train = true
-test = false
 
 is_ddp = false
-gpus = ['1']
+gpus = ['0']
 n_classes = 2
 
-tissue_label = 'Sk'
+start_unbalance_loss_epoch =100
+tissue_label = 'SMT'
 region_label = 'SMR'
+
+tissue_loss_ratio = 0.6
+region_loss_ratio = 0.4
 
 loss_criterion = 'dice_ce'
 lr = 1e-2
 epochs = 1000
 batch_size = 12
 n_iter_per_epoch = 250
-val_batch_size = 50
+val_batch_size = 80
 val_interval = 1
 
 checkpoint_saved_interval = 50
 
-snapshot = '${user_path}/running/bca_${tissue_label}_${network.architecture}'
+snapshot = '${user_path}/running/bca_${tissue_label}_${network.architecture}_whole-body'
 
 # dataset
-dataset_property_file = '${data_path}/dataset/${tissue_label}_dataset_properties.json'
+dataset_property_file = '${data_path}/dataset/${tissue_label}_fingerprint.json'
 
 #boundary_file = '${data_path}/boundaries/Skn_boundary.csv'
 training_slice_txt = '${data_path}/dataset/${tissue_label}_training_slices.txt'
@@ -116,3 +119,28 @@ p_retain_stats = 1
 
 [network]
 architecture = 'ganet'
+input_channels = 1
+num_classes = 2
+num_stages = 8
+conv_dim = 2
+num_features_per_stage = [32, 64, 128, 256, 512, 512, 512, 512]
+num_conv_per_stage_encoder = [2, 2, 2, 2, 2, 2, 2, 2]
+num_conv_per_stage_decoder = [2, 2, 2, 2, 2, 2, 2]
+kernel_sizes = [[3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3], [3, 3]]
+strides = [[1, 1], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2], [2, 2]]
+conv_bias = true
+non_linear_first = false
+norm_op = 'InstanceNorm'
+non_linear = 'relu'
+[network.norm_op_kwargs]
+affine = true
+eps = 1e-05
+[network.non_linear_kwargs]
+inplace = true
+[network.initialization]
+allow_init = true
+method = 'kaiming_initialize'
+[network.initialization.params]
+#a = 1e-2
+a = 0
+nonlinearity = 'relu'

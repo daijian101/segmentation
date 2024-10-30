@@ -249,13 +249,15 @@ class GANet(nn.Module):
     def forward(self, x):
         skips = self.encoder(x)
         x_tissue, x_region = self.decoder(skips)
-        x_region = self.region_head_1(x_region)
+
         x_tissue = self.tissue_head_1(x_tissue)
+        x_region = self.region_head_1(x_region)
 
         x_tissue = self.attn_gate1(x_tissue, x_region)
 
         x_region = self.region_head_2(x_region)
         x_tissue = self.tissue_head_2(x_tissue)
+
         x_tissue = self.attn_gate2(x_tissue, x_region)
 
         return x_tissue, x_region
