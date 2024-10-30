@@ -138,7 +138,7 @@ eps = 1e-05
 [network.non_linear_kwargs]
 inplace = true
 [network.initialization]
-allow_init = true
+allow_init = false
 method = 'kaiming_initialize'
 [network.initialization.params]
 #a = 1e-2
