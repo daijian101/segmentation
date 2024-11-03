@@ -1,14 +1,13 @@
-gpus = ['1']
+gpus = ['0']
 batch_size = 50
 
-IM0_path = '/data1/dj/lymphoma_data/CT_images'
-volume_json_path = '/data1/dj/lymphoma_data/CT_images_json'
-result_cavass_path = '/data1/dj/lymphoma_data/CT_images_bim'
+IM0_path = '/data1/dj/Norm_BCA_metrics/BCA-Trimmed-Refined/All_original-CT-254'
+volume_json_path = '/data1/dj/Norm_BCA_metrics/BCA-Trimmed-Refined/All_original-CT-254_json'
+result_cavass_path = '/data1/dj/Norm_BCA_metrics/BCA-Trimmed-Refined/All_original-CT-254_bim'
 
-inference_samples = ['DLBCL273PC1-CT', 'DLBCL121PC1-CT']
 convert_json = true
 
-inference_labels = ['Skn']
+inference_labels = ['SAT_wb', 'VAT_wb', 'SMT_wb', 'Sk_wb']
 
 pretrained_model_zoo = '/data1/dj/bca_pretrained'
 
@@ -50,4 +49,32 @@ model = 'ganet'
 checkpoint = '${pretrained_model_zoo}/SMT/SMT_ganet.pt'
 network_config = '${pretrained_model_zoo}/SMT/network_config.toml'
 data_property = '${pretrained_model_zoo}/SMT/data_property.json'
+batch_size = 50
+
+[labels.SAT_wb]
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/SAT_whole_body/SAT_ganet_wb.pt'
+network_config = '${pretrained_model_zoo}/SAT_whole_body/network_config.toml'
+data_property = '${pretrained_model_zoo}/SAT_whole_body/data_property.json'
+batch_size = 50
+
+[labels.VAT_wb]
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/VAT_whole_body/VAT_ganet_wb.pt'
+network_config = '${pretrained_model_zoo}/VAT_whole_body/network_config.toml'
+data_property = '${pretrained_model_zoo}/VAT_whole_body/data_property.json'
+batch_size = 50
+
+[labels.SMT_wb]
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/SMT_whole_body/SMT_ganet_wb.pt'
+network_config = '${pretrained_model_zoo}/SMT_whole_body/network_config.toml'
+data_property = '${pretrained_model_zoo}/SMT_whole_body/data_property.json'
+batch_size = 50
+
+[labels.Sk_wb]
+model = 'ganet'
+checkpoint = '${pretrained_model_zoo}/Sk_whole_body/Sk_ganet_wb.pt'
+network_config = '${pretrained_model_zoo}/Sk_whole_body/network_config.toml'
+data_property = '${pretrained_model_zoo}/Sk_whole_body/data_property.json'
 batch_size = 50

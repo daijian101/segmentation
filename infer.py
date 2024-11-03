@@ -26,8 +26,8 @@ def convert2json(study_index, failure_samples):
     json_file = os.path.join(cfg.volume_json_path, f'{study_index}.json')
     if os.path.exists(json_file):
         return
-    im0_file = os.path.join(cfg.IM0_path, study_index, f'{study_index}-CT.IM0')
-    # im0_file = os.path.join(cfg.IM0_path, f'{study_index}.IM0')
+    # im0_file = os.path.join(cfg.IM0_path, study_index, f'{study_index}-CT.IM0')
+    im0_file = os.path.join(cfg.IM0_path, f'{study_index}.IM0')
     try:
         image_data = cavass.read_cavass_file(im0_file)
     except OSError:
@@ -42,31 +42,31 @@ def convert2json(study_index, failure_samples):
 def main():
     if 'inference_samples' in cfg:
         if isinstance(cfg.inference_samples, str):
-            samples = read_txt2list(cfg.inference_samples)
+            studies = read_txt2list(cfg.inference_samples)
         else:
-            samples = cfg.inference_samples
+            studies = cfg.inference_samples
     else:
-        # samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('PET') == -1]
-        samples = [each for each in os.listdir(cfg.IM0_path)]
-        # samples = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('-CT') != -1 or each.find('-CT-') != -1]
+        studies = [each[:-4] for each in os.listdir(cfg.IM0_path)]
+        # studies = [each for each in os.listdir(cfg.IM0_path)]
+        # studies = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('-CT') != -1 or each.find('-CT-') != -1]
 
     if cfg.convert_json:
         # convert IM0 to json
         print('======Convert IM0 to JSON======')
         failure_samples = []
         params = []
-        for sample in samples:
+        for sample in studies:
             params.append((sample, failure_samples))
 
         fork(convert2json, 8, params)
 
         if failure_samples:
-            samples = [each for each in samples if each not in failure_samples]
+            studies = [each for each in studies if each not in failure_samples]
             write_list2txt(os.path.join(cfg.result_cavass_path, 'failure_samples.txt'), failure_samples)
 
     print('======Infer subjects======')
 
-    json_samples = [f'{each}.json' for each in samples]
+    json_samples = [f'{each}.json' for each in studies]
 
     for target_label in tqdm(cfg.inference_labels):
         data_property = read_json(cfg.labels[target_label].data_property)
@@ -121,8 +121,8 @@ def main():
 
             segmentation = post_process_compose(segmentation)
 
-            im0_file = os.path.join(cfg.IM0_path, study_index, f'{study_index}-CT.IM0')
-            # im0_file = os.path.join(cfg.IM0_path, f'{study_index}.IM0')
+            # im0_file = os.path.join(cfg.IM0_path, study_index, f'{study_index}-CT.IM0')
+            im0_file = os.path.join(cfg.IM0_path, f'{study_index}.IM0')
 
             # cavass.save_cavass_file(os.path.join(bim_save_path, subject_name, f'{subject_name}_{target_label}.BIM'),
             #                         segmentation, True, reference_file=im0_file)
