@@ -105,7 +105,7 @@ def main():
                                 std=dataset_properties['intensity_std'],
                                 lower_bound=dataset_properties['intensity_0_5_percentile'],
                                 upper_bound=dataset_properties['intensity_99_5_percentile']),
-            AddChannel(keys=['data', tissue_label, region_label], dim=0),
+            AddChannel(keys=['data', tissue_label, region_label], axis=0),
             ToTensor(keys=['data', tissue_label, region_label]),
             SpatialTransform(keys=['data', tissue_label, region_label], apply_probability=1,
                              patch_size=cfg.training_data_augments.spatial_transform.patch_size,
