@@ -129,14 +129,14 @@ found correctly.
 
 Function ``convert2json``
 
-![image-20241228013220230](/Users/jiandai/workspace_local/segmentation/README.assets/image-20241228013220230.png)
+![image-20241228013220230](./README.assets/image-20241228013220230.png)
 
 Function ``main``
 
 To find the inference samples.
 
-![image-20241228013244358](/Users/jiandai/workspace_local/segmentation/README.assets/image-20241228013244358.png)
+![image-20241228013244358](./README.assets/image-20241228013244358.png)
 
 To save the output segmentation.
 
-![image-20241228013345721](/Users/jiandai/workspace_local/segmentation/README.assets/image-20241228013345721.png)
+![image-20241228013345721](./README.assets/image-20241228013345721.png)
