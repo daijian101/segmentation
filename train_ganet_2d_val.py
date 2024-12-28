@@ -5,9 +5,9 @@ import torch
 import torch.distributed as dist
 from jbag import MetricSummary
 from jbag import logger
-from jbag.checkpoint import load_checkpoint, save_checkpoint
-from jbag.config import get_config
+from jbag.config import load_config
 from jbag.io import read_json
+from jbag.model_weights import load_weights, save_weights
 from jbag.transforms import ToType, AddChannel, ToTensor
 from jbag.transforms.brightness import MultiplicativeBrightnessTransform
 from jbag.transforms.contrast import ContrastTransform
@@ -67,7 +67,7 @@ def main():
 
         # Load pre-trained model
         if 'checkpoint' in cfg and cfg.checkpoint:
-            load_checkpoint(cfg.checkpoint, network)
+            load_weights(cfg.checkpoint, network)
 
         # data loader
         training_samples = dataset_properties['training_set']
@@ -75,7 +75,7 @@ def main():
         tissue_label = cfg.tissue_label
         region_label = cfg.region_label
         label_dict = {tissue_label: cfg.slice_sample_dir[tissue_label],
-                               region_label: cfg.slice_sample_dir[region_label]}
+                      region_label: cfg.slice_sample_dir[region_label]}
 
         tr_transforms = [
             ToType(keys='data', dtype=np.float32),
@@ -174,7 +174,8 @@ def main():
                                    transforms=val_test_transforms)
 
         val_data_sampler = DistributedSampler(val_dataset, shuffle=False) if is_ddp else None
-        val_data_loader = DataLoader(val_dataset, cfg.val_batch_size, sampler=val_data_sampler, num_workers=4, pin_memory=True)
+        val_data_loader = DataLoader(val_dataset, cfg.val_batch_size, sampler=val_data_sampler, num_workers=4,
+                                     pin_memory=True)
 
         best_val_dice = 0
         iteration = 0
@@ -266,21 +267,20 @@ def main():
                     logger.info(f'Epoch {epoch}. Validation region dice is {mean_val_region_dice_score}')
                     if mean_val_tissue_dice_score >= best_val_dice:
                         best_val_dice = mean_val_tissue_dice_score
-                        save_checkpoint(os.path.join(log_dir, 'best_val_checkpoint.pt'), network)
+                        save_weights(os.path.join(log_dir, 'best_val_checkpoint.pt'), network)
 
                         vis_log.add_scalar('snapshot/epoch', epoch, epoch)
                         vis_log.add_scalar('snapshot/dice', best_val_dice, epoch)
             if is_ddp:
                 dist.barrier()
 
-            # if epoch != 0 and epoch % cfg.checkpoint_saved_interval == 0:
-            #     saved_parameters = {'epoch': epoch, 'grad_scaler': grad_scaler.state_dict(),
-            #                         'lr_scheduler': poly_lr.state_dict()}
-            #     if is_master:
-            #         saved_parameters['best_val_dice'] = best_val_dice
-            #     save_checkpoint(os.path.join(log_dir, 'checkpoint', f'checkpoint_{epoch}.pth'), network, optimizer,
-            #                     **saved_parameters)
-
+            if epoch != 0 and epoch % cfg.checkpoint_saved_interval == 0:
+                saved_parameters = {'epoch': epoch, 'grad_scaler': grad_scaler.state_dict(),
+                                    'lr_scheduler': poly_lr.state_dict()}
+                if is_master:
+                    saved_parameters['best_val_dice'] = best_val_dice
+                save_weights(os.path.join(log_dir, 'checkpoint', f'checkpoint_{epoch}.pth'), network, optimizer,
+                             **saved_parameters)
 
     if cfg.train:
         train()
@@ -291,7 +291,7 @@ def main():
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    cfg = get_config(args.cfg)
+    cfg = load_config(args.cfg)
 
     if args.gpus:
         cfg.gpus = args.gpus

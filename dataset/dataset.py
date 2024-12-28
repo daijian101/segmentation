@@ -1,4 +1,5 @@
 import os
+
 import numpy as np
 from jbag.io import read_json
 from torch.utils.data import Dataset
@@ -104,7 +105,6 @@ class BalancedForegroundRegionDataset(Dataset):
 
         if self.label_dict:
             for label, label_dir in self.label_dict.items():
-
                 label_file = os.path.join(label_dir, f'{subject}_{slice_idx:0>3d}.json')
                 label_obj = read_json(label_file)
                 label_data = label_obj['data']

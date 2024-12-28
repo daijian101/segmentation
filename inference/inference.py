@@ -16,7 +16,7 @@ class Inference(ABC):
         image = image.squeeze()
         if len(image.shape) == 2:
             image = torch.unsqueeze(image, dim=2)
-        image = torch.einsum('hwb -> bhw', image)
+        image = image.permute((2, 0, 1))
         batch_size = self.inference_size if self.inference_size <= image.shape[0] else image.shape[0]
         patch_size = (batch_size, image.size(1), image.size(2))
         sampler = GridSampler(image, patch_size)
@@ -26,7 +26,7 @@ class Inference(ABC):
             output_patch = self.infer_batch(patch)
             output.append(output_patch.to(torch.uint8).cpu())
         output = sampler.restore(output)
-        output = torch.einsum('chw -> hwc', output)
+        output = output.permute(1, 2, 0)
         return output
 
     @abstractmethod

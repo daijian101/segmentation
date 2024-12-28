@@ -4,15 +4,13 @@ import numpy as np
 import torch
 import torch.distributed as dist
 from cavass.ops import save_cavass_file
-from einops import rearrange
 from jbag import MetricSummary
 from jbag import logger
-from jbag.checkpoint import load_checkpoint, save_checkpoint
-from jbag.config import get_config
+from jbag.config import load_config
 from jbag.io import read_txt2list, read_json
+from jbag.model_weights import load_weights, save_weights
 from jbag.models.deep_supervision import DeepSupervisionLossWrapper, get_deep_supervision_loss_weights, \
     set_deep_supervision, get_deep_supervision_scales
-from jbag.samplers import GridSampler
 from jbag.transforms import ToType, AddChannel, ToTensor
 from jbag.transforms.brightness import MultiplicativeBrightnessTransform
 from jbag.transforms.contrast import ContrastTransform
@@ -39,6 +37,7 @@ from cfgs.args import parser
 from dataset.dataset import ImageDataset, BalancedForegroundRegionDataset
 from loss_criterions import get_loss_criterion
 from models import model_zoo
+from training_utils import infer_3d_volume
 
 
 def main():
@@ -66,25 +65,6 @@ def main():
         vis_log_path = os.path.join(log_dir, 'log')
         vis_log = SummaryWriter(vis_log_path)
 
-    @torch.no_grad()
-    def infer_3d_volume(batch):
-        input = batch['data']
-        input = rearrange(input, 'b h w d -> (b d) h w')
-        batch_size = cfg.val_batch_size
-        batch_size = batch_size if batch_size < input.shape[1] else input.shape[1]
-        patch_size = (batch_size, input.size(1), input.size(2))
-        sampler = GridSampler(input, patch_size)
-
-        output = []
-        for patch in sampler:
-            patch = patch.unsqueeze(dim=1)
-            output_patch = network(patch.to(device))
-            output_patch = torch.argmax(output_patch, dim=1).to(torch.uint8).cpu()
-            output.append(output_patch)
-        output = sampler.restore(output)
-
-        return output
-
     def train():
         grad_scaler = GradScaler()
         optimizer = SGD(params=network.parameters(), lr=cfg.lr, momentum=0.99, weight_decay=3e-5)
@@ -92,7 +72,7 @@ def main():
 
         # Load pre-trained model
         if 'checkpoint' in cfg and cfg.checkpoint:
-            load_checkpoint(cfg.checkpoint, network)
+            load_weights(cfg.checkpoint, network)
 
         # dataloader
         training_samples = dataset_properties['training_dataset']
@@ -266,8 +246,8 @@ def main():
                 val_bar = tqdm(val_data_loader, postfix={'epoch': epoch, 'rank': world_rank})
                 for batch in val_bar:
                     with autocast():
-                        output = infer_3d_volume(batch)
-                    output = rearrange(output, 'd h w -> 1 h w d')
+                        output = infer_3d_volume(batch, cfg.val_batch_size, network, device)
+                    output = output.permute((1, 2, 0)).unsqueeze()
                     target = batch[cfg.label]
 
                     output = output.squeeze(0).cpu().numpy()
@@ -284,7 +264,7 @@ def main():
                     vis_log.add_scalar('val dice', mean_val_dice_score, epoch)
                     if mean_val_dice_score >= best_val_dice:
                         best_val_dice = mean_val_dice_score
-                        save_checkpoint(os.path.join(log_dir, 'best_val_checkpoint.pt'), network)
+                        save_weights(os.path.join(log_dir, 'best_val_checkpoint.pt'), network)
 
                         vis_log.add_scalar('snapshot/epoch', epoch, epoch)
                         vis_log.add_scalar('snapshot/dice', best_val_dice, epoch)
@@ -296,11 +276,11 @@ def main():
                                     'lr_scheduler': poly_lr.state_dict()}
                 if is_master:
                     saved_parameters['best_val_dice'] = best_val_dice
-                save_checkpoint(os.path.join(log_dir, 'checkpoint', f'checkpoint_{epoch}.pth'), network, optimizer,
-                                **saved_parameters)
+                save_weights(os.path.join(log_dir, 'checkpoint', f'checkpoint_{epoch}.pth'), network, optimizer,
+                             **saved_parameters)
 
     def test():
-        load_checkpoint(cfg.checkpoint, network)
+        load_weights(cfg.checkpoint, network)
         test_sample = read_txt2list(cfg.test_ct_txt)
         volume_image_dir = cfg.volume_sample_dir.image
         test_label_dict = {cfg.label: cfg.volume_sample_dir[cfg.label]}
@@ -321,8 +301,8 @@ def main():
         for batch in tqdm(test_data_loader):
             subject_name = batch['subject'][0]
             with autocast():
-                output = infer_3d_volume(batch)
-            output = rearrange(output, 'd h w -> 1 h w d')
+                output = infer_3d_volume(batch, cfg.val_batch_size, network, device)
+            output = output.permute((1, 2, 0)).unsqueeze()
             target = batch[cfg.label]
 
             output = output.squeeze(0).cpu().numpy()
@@ -335,7 +315,7 @@ def main():
                 output = output.squeeze()
                 im0_file = os.path.join(cfg.volume_sample_dir.im0, subject_name + '.IM0')
                 save_file = os.path.join(log_dir, 'test_result', f'{subject_name}_{cfg.label}.BIM')
-                save_cavass_file(save_file, output, True, reference_file=im0_file)
+                save_cavass_file(save_file, output, True, copy_pose_file=im0_file)
 
         vis_log.add_scalar('test dice/mean', dice_metric.mean(), )
         vis_log.add_scalar('test dice/std', dice_metric.std(), )
@@ -352,7 +332,7 @@ def main():
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    cfg = get_config(args.cfg)
+    cfg = load_config(args.cfg)
 
     if args.gpus:
         cfg.gpus = args.gpus

@@ -4,16 +4,16 @@ import traceback
 import cavass.ops as cavass
 import numpy as np
 import torch
-from jbag.checkpoint import load_checkpoint
-from jbag.config import get_config
+from jbag.config import load_config
 from jbag.io import read_txt2list, save_json, write_list2txt, read_json
+from jbag.model_weights import load_weights
+from jbag.mp import fork
 from jbag.transforms import ToType
 from jbag.transforms.normalization import ZscoreNormalization
 from torch.cuda.amp import autocast
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose
 from tqdm import tqdm
-from jbag.mp import fork
 
 from cfgs.args import parser
 from dataset.dataset import ImageDataset
@@ -23,11 +23,13 @@ from post_process import PostProcessTransformCompose, post_process_methods
 
 
 def convert2json(study_index, failure_samples):
-    json_file = os.path.join(cfg.volume_json_path, f'{study_index}.json')
+    json_file = os.path.join(cfg.volume_json_dir, f'{study_index}.json')
     if os.path.exists(json_file):
         return
-    # im0_file = os.path.join(cfg.IM0_path, study_index, f'{study_index}-CT.IM0')
-    im0_file = os.path.join(cfg.IM0_path, f'{study_index}.IM0')
+
+    # Declare directory structure
+    # im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}-CT.IM0')
+    im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
     try:
         image_data = cavass.read_cavass_file(im0_file)
     except OSError:
@@ -46,9 +48,10 @@ def main():
         else:
             studies = cfg.inference_samples
     else:
-        studies = [each[:-4] for each in os.listdir(cfg.IM0_path)]
-        # studies = [each for each in os.listdir(cfg.IM0_path)]
-        # studies = [each[:-4] for each in os.listdir(cfg.IM0_path) if each.find('-CT') != -1 or each.find('-CT-') != -1]
+        # Declare directory structure
+        studies = [each[:-4] for each in os.listdir(cfg.IM0_dir)]
+        # studies = [each for each in os.listdir(cfg.IM0_dir)]
+        # studies = [each[:-4] for each in os.listdir(cfg.IM0_dir) if each.find('-CT') != -1 or each.find('-CT-') != -1]
 
     if cfg.convert_json:
         # convert IM0 to json
@@ -62,7 +65,7 @@ def main():
 
         if failure_samples:
             studies = [each for each in studies if each not in failure_samples]
-            write_list2txt(os.path.join(cfg.result_cavass_path, 'failure_samples.txt'), failure_samples)
+            write_list2txt(os.path.join(cfg.output_cavass_dir, 'failure_samples.txt'), failure_samples)
 
     print('======Infer subjects======')
 
@@ -80,14 +83,14 @@ def main():
         ])
 
         dataset = ImageDataset(json_samples,
-                               cfg.volume_json_path,
+                               cfg.volume_json_dir,
                                transforms=tr_transforms)
         data_loader = DataLoader(dataset, 1)
 
         model_name = cfg.labels[target_label].model
-        network_config = get_config(cfg.labels[target_label].network_config)
+        network_config = load_config(cfg.labels[target_label].network_config)
         model = model_zoo[model_name](network_config).to(device)
-        load_checkpoint(cfg.labels[target_label].checkpoint, model)
+        load_weights(cfg.labels[target_label].pretrained_weights, model)
         inference_method = cfg.labels[target_label].inference_method if 'inference_method' in cfg.labels[target_label] \
             else cfg.labels[target_label].model
 
@@ -101,7 +104,7 @@ def main():
         inference_ist = inference_zoo[inference_method](model, batch_size, device,
                                                         **inference_method_extra_args)
 
-        bim_save_path = os.path.join(cfg.result_cavass_path, f'{target_label}')
+        bim_save_path = os.path.join(cfg.output_cavass_dir, f'{target_label}')
 
         trs = []
         if 'post_process' in cfg.labels[target_label]:
@@ -121,18 +124,17 @@ def main():
 
             segmentation = post_process_compose(segmentation)
 
-            # im0_file = os.path.join(cfg.IM0_path, study_index, f'{study_index}-CT.IM0')
-            im0_file = os.path.join(cfg.IM0_path, f'{study_index}.IM0')
+            # Declare directory structure
+            # im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}-CT.IM0')
+            im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
 
-            # cavass.save_cavass_file(os.path.join(bim_save_path, subject_name, f'{subject_name}_{target_label}.BIM'),
-            #                         segmentation, True, reference_file=im0_file)
-
-            cavass.save_cavass_file(os.path.join(bim_save_path, f'{study_index}_{target_label}.BIM'), segmentation, True, reference_file=im0_file)
+            cavass.save_cavass_file(os.path.join(bim_save_path, f'{study_index}_{target_label}.BIM'), segmentation,
+                                    True, copy_pose_file=im0_file)
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    cfg = get_config(args.cfg)
+    cfg = load_config(args.cfg)
     os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(cfg.gpus)
     if torch.cuda.is_available():
         device = torch.device('cuda')

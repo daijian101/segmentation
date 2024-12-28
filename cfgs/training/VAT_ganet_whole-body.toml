@@ -10,7 +10,7 @@ n_classes = 2
 tissue_label = 'VAT'
 region_label = 'IAM'
 
-start_unbalance_loss_epoch =100
+start_unbalance_loss_epoch = 100
 tissue_loss_ratio = 0.6
 region_loss_ratio = 0.4
 
@@ -68,7 +68,7 @@ deterministic = false
 patch_size = [512, 512]
 patch_center_dist_from_border = 0
 random_crop = false
-p_elastic_defrom= 0
+p_elastic_defrom = 0
 p_rotation = 0.2
 rotation = [-3.1415926, 3.1415926]
 p_scaling = 0.2

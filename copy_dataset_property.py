@@ -1,6 +1,4 @@
-
 from jbag.io import read_json, save_json
-
 
 file = '/data1/dj/data/bca/dataset/Sk_fingerprint.json'
 data = read_json(file)
