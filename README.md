@@ -127,16 +127,16 @@ There are three ways to declare the images that need to be segmented.
 The following **directory structure** code in **infer.py** may need to be changed to ensure that the image file can be
 found correctly.
 
-Function ``convert2json``
+*Function ``convert2json``*
 
 ![image-20241228013220230](./README.assets/image-20241228013220230.png)
 
-Function ``main``
+*Function ``main``*
 
-To find the inference samples.
+**To find the inference samples.**
 
 ![image-20241228013244358](./README.assets/image-20241228013244358.png)
 
-To save the output segmentation.
+**To save the output segmentation.**
 
 ![image-20241228013345721](./README.assets/image-20241228013345721.png)
