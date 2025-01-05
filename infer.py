@@ -1,5 +1,6 @@
 import os
 import traceback
+from multiprocessing import cpu_count
 
 import cavass.ops as cavass
 import numpy as np
@@ -7,7 +8,7 @@ import torch
 from jbag.config import load_config
 from jbag.io import read_txt2list, save_json, write_list2txt, read_json
 from jbag.model_weights import load_weights
-from jbag.mp import fork
+from jbag.parallel_processing import execute
 from jbag.transforms import ToType
 from jbag.transforms.normalization import ZscoreNormalization
 from torch.cuda.amp import autocast
@@ -24,12 +25,14 @@ from post_process import PostProcessTransformCompose, post_process_methods
 
 def convert2json(study_index, failure_samples):
     json_file = os.path.join(cfg.volume_json_dir, f'{study_index}.json')
+
     if os.path.exists(json_file):
         return
 
     # Declare directory structure
     # im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}-CT.IM0')
     im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
+
     try:
         image_data = cavass.read_cavass_file(im0_file)
     except OSError:
@@ -49,9 +52,16 @@ def main():
             studies = cfg.inference_samples
     else:
         # Declare directory structure
-        studies = [each[:-4] for each in os.listdir(cfg.IM0_dir)]
+        # studies = [each[:-4] for each in os.listdir(cfg.IM0_dir)]
         # studies = [each for each in os.listdir(cfg.IM0_dir)]
         # studies = [each[:-4] for each in os.listdir(cfg.IM0_dir) if each.find('-CT') != -1 or each.find('-CT-') != -1]
+        studies = []
+
+        for each in os.listdir(cfg.IM0_dir):
+            for i_each in os.listdir(os.path.join(cfg.IM0_dir, each)):
+                for j_each in os.listdir(os.path.join(cfg.IM0_dir, each, i_each)):
+                    if j_each.endswith('IM0'):
+                        studies.append(os.path.join(cfg.IM0_dir, each, i_each, j_each))
 
     if cfg.convert_json:
         # convert IM0 to json
@@ -61,7 +71,7 @@ def main():
         for sample in studies:
             params.append((sample, failure_samples))
 
-        fork(convert2json, 8, params)
+        execute(convert2json, cpu_count(), params)
 
         if failure_samples:
             studies = [each for each in studies if each not in failure_samples]
@@ -126,7 +136,7 @@ def main():
 
             # Declare directory structure
             # im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}-CT.IM0')
-            im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
+            im0_file = study_index
 
             cavass.save_cavass_file(os.path.join(bim_save_path, f'{study_index}_{target_label}.BIM'), segmentation,
                                     True, copy_pose_file=im0_file)

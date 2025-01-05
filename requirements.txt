@@ -1,5 +1,5 @@
 cavass >= 1.1.8
-jbag >= 4.1.0
+jbag >= 4.1.2
 medpy
 tensorboardX
 tqdm
