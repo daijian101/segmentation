@@ -24,15 +24,18 @@ from post_process import PostProcessTransformCompose, post_process_methods
 
 
 def convert2json(study_index, failure_samples):
+    # study_name = os.path.basename(study_index)[:-4]
+    # json_file = os.path.join(cfg.volume_json_dir, f'{study_name}.json')
+
     json_file = os.path.join(cfg.volume_json_dir, f'{study_index}.json')
 
     if os.path.exists(json_file):
         return
 
     # Declare directory structure
-    # im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}-CT.IM0')
-    im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
-
+    im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}.IM0')
+    # im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
+    # im0_file = study_index
     try:
         image_data = cavass.read_cavass_file(im0_file)
     except OSError:
@@ -53,15 +56,15 @@ def main():
     else:
         # Declare directory structure
         # studies = [each[:-4] for each in os.listdir(cfg.IM0_dir)]
-        # studies = [each for each in os.listdir(cfg.IM0_dir)]
+        studies = [each for each in os.listdir(cfg.IM0_dir)]
         # studies = [each[:-4] for each in os.listdir(cfg.IM0_dir) if each.find('-CT') != -1 or each.find('-CT-') != -1]
-        studies = []
+        # studies = []
 
-        for each in os.listdir(cfg.IM0_dir):
-            for i_each in os.listdir(os.path.join(cfg.IM0_dir, each)):
-                for j_each in os.listdir(os.path.join(cfg.IM0_dir, each, i_each)):
-                    if j_each.endswith('IM0'):
-                        studies.append(os.path.join(cfg.IM0_dir, each, i_each, j_each))
+        # for each in os.listdir(cfg.IM0_dir):
+        #     for i_each in os.listdir(os.path.join(cfg.IM0_dir, each)):
+        #         for j_each in os.listdir(os.path.join(cfg.IM0_dir, each, i_each)):
+        #             if j_each.endswith('IM0'):
+        #                 studies.append(os.path.join(cfg.IM0_dir, each, i_each, j_each))
 
     if cfg.convert_json:
         # convert IM0 to json
@@ -80,6 +83,7 @@ def main():
     print('======Infer subjects======')
 
     json_samples = [f'{each}.json' for each in studies]
+    # json_samples = [f'{os.path.basename(each)[:-4]}.json' for each in studies]
 
     for target_label in tqdm(cfg.inference_labels):
         data_property = read_json(cfg.labels[target_label].data_property)
@@ -114,8 +118,6 @@ def main():
         inference_ist = inference_zoo[inference_method](model, batch_size, device,
                                                         **inference_method_extra_args)
 
-        bim_save_path = os.path.join(cfg.output_cavass_dir, f'{target_label}')
-
         trs = []
         if 'post_process' in cfg.labels[target_label]:
             for each_transform in cfg.labels[target_label]['post_process']:
@@ -125,8 +127,16 @@ def main():
         for batch in tqdm(data_loader):
             study_index = batch['subject'][0]
 
-            output_file_path = os.path.join(bim_save_path, f'{study_index}_{target_label}.BIM')
-            if os.path.exists(output_file_path):
+            # bim_save_path = os.path.join(cfg.output_cavass_dir, f'{target_label}')
+
+            # bim_save_path = os.path.join(cfg.output_cavass_dir)
+            # study_index_path = study_index.split(os.sep)
+            # output_file_path = os.path.join(bim_save_path, study_index_path[5], study_index_path[6],
+            #                                 f'{study_index_path[7][:-4]}_{target_label}.BIM')
+
+            bim_save_path = cfg.output_cavass_dir
+            output_file = os.path.join(bim_save_path, study_index, f'{study_index}-Skn.BIM')
+            if os.path.exists(output_file):
                 continue
             with autocast():
                 result = inference_ist.infer_sample(batch)
@@ -135,11 +145,10 @@ def main():
             segmentation = post_process_compose(segmentation)
 
             # Declare directory structure
-            # im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}-CT.IM0')
-            im0_file = study_index
+            im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}.IM0')
+            # im0_file = study_index
 
-            cavass.save_cavass_file(os.path.join(bim_save_path, f'{study_index}_{target_label}.BIM'), segmentation,
-                                    True, copy_pose_file=im0_file)
+            cavass.save_cavass_file(output_file, segmentation, True, copy_pose_file=im0_file)
 
 
 if __name__ == '__main__':
