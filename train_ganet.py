@@ -215,7 +215,7 @@ def main():
                     region_gt = region_gt.to(device)
                     tissue_loss = loss_criterion(tissue_output, tissue_gt)
                     region_loss = loss_criterion(region_output, region_gt)
-                    loss = tissue_loss + region_loss
+                    loss = 0.7 * tissue_loss + 0.3 * region_loss
                 grad_scaler.scale(loss).backward()
                 grad_scaler.unscale_(optimizer)
                 torch.nn.utils.clip_grad_norm_(network.parameters(), 12)
@@ -238,11 +238,11 @@ def main():
                 for batch in val_bar:
                     with autocast():
                         output = infer_3d_volume(batch, cfg.val_batch_size, network, device)
-                    output = output.permute((1, 2, 0)).unsqueeze()
+                    output = output.permute((1, 2, 0))
                     target = batch[tissue_label]
 
-                    output = output.squeeze(0).cpu().numpy()
-                    target = target.squeeze(0).cpu().numpy()
+                    output = output.cpu().numpy()
+                    target = target.squeeze(0).numpy()
 
                     dice_metric(output, target)
                     val_bar.postfix = f'epoch: {epoch} rank: {world_rank} dice: {dice_metric.mean()}'
@@ -304,7 +304,7 @@ def main():
 
             if cfg.save_test_segmentation_map:
                 output = output.squeeze()
-                im0_file = os.path.join(cfg.volume_sample_dir.im0, subject_name + '.IM0')
+                im0_file = os.path.join(cfg.volume_sample_dir.im0_dir, subject_name + '.IM0')
                 save_file = os.path.join(log_dir, 'test_result', f'{subject_name}_{cfg.tissue_label}.BIM')
                 save_cavass_file(save_file, output, True, copy_pose_file=im0_file)
 

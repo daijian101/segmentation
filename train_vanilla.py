@@ -302,18 +302,18 @@ def main():
             subject_name = batch['subject'][0]
             with autocast():
                 output = infer_3d_volume(batch, cfg.val_batch_size, network, device)
-            output = output.permute((1, 2, 0)).unsqueeze()
+            output = output.permute((1, 2, 0))
             target = batch[cfg.label]
 
-            output = output.squeeze(0).cpu().numpy()
-            target = target.squeeze(0).cpu().numpy()
+            output = output.cpu().numpy()
+            target = target.squeeze(0).numpy()
 
             dsc = dice_metric(output, target)
             vis_log.add_scalar(f'test/{subject_name}/dsc', dsc)
 
             if cfg.save_test_segmentation_map:
                 output = output.squeeze()
-                im0_file = os.path.join(cfg.volume_sample_dir.im0, subject_name + '.IM0')
+                im0_file = os.path.join(cfg.volume_sample_dir.im0_dir, subject_name + '.IM0')
                 save_file = os.path.join(log_dir, 'test_result', f'{subject_name}_{cfg.label}.BIM')
                 save_cavass_file(save_file, output, True, copy_pose_file=im0_file)
 

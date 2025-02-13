@@ -3,3 +3,4 @@ jbag >= 4.1.2
 medpy
 tensorboardX
 tqdm
+monai
