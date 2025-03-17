@@ -33,8 +33,7 @@ def convert2json(study_index, failure_samples):
         return
 
     # Declare directory structure
-    im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}.IM0')
-    # im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
+    im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
     # im0_file = study_index
     try:
         image_data = cavass.read_cavass_file(im0_file)
@@ -55,8 +54,8 @@ def main():
             studies = cfg.inference_samples
     else:
         # Declare directory structure
-        # studies = [each[:-4] for each in os.listdir(cfg.IM0_dir)]
-        studies = [each for each in os.listdir(cfg.IM0_dir)]
+        studies = [each[:-4] for each in os.listdir(cfg.IM0_dir)]
+        # studies = [each for each in os.listdir(cfg.IM0_dir)]
         # studies = [each[:-4] for each in os.listdir(cfg.IM0_dir) if each.find('-CT') != -1 or each.find('-CT-') != -1]
         # studies = []
 
@@ -135,7 +134,7 @@ def main():
             #                                 f'{study_index_path[7][:-4]}_{target_label}.BIM')
 
             bim_save_path = cfg.output_cavass_dir
-            output_file = os.path.join(bim_save_path, study_index, f'{study_index}-Skn.BIM')
+            output_file = os.path.join(bim_save_path, target_label, f'{study_index}.BIM')
             if os.path.exists(output_file):
                 continue
             with autocast():
@@ -145,7 +144,8 @@ def main():
             segmentation = post_process_compose(segmentation)
 
             # Declare directory structure
-            im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}.IM0')
+            # im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}.IM0')
+            im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
             # im0_file = study_index
 
             cavass.save_cavass_file(output_file, segmentation, True, copy_pose_file=im0_file)
