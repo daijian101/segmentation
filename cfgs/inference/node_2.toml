@@ -1,10 +1,10 @@
 gpus = ['0']
 
-batch_size = 50
+batch_size = 10
 
-IM0_dir = '/data1/dj/Norm_BCA_metrics/BCA-Trimmed-Refined/All_original-CT-254'
-volume_json_dir = '/data1/dj/Norm_BCA_metrics/BCA-Trimmed-Refined/All_original-CT-254_json'
-output_cavass_dir = '/data1/dj/Norm_BCA_metrics/BCA-Trimmed-Refined/All_original-CT-254_bim'
+IM0_dir = '/data1/dj/inhouse_dataset_D/WDS11/Datasets-WDS11'
+volume_json_dir = '/home/ubuntu/dj/wds11/json'
+output_cavass_dir = '/home/ubuntu/dj/wds11/BCA'
 
 # You need to convert image format to JSON format for processing.
 # You can set this to false if you already performed the converting.
@@ -12,8 +12,8 @@ output_cavass_dir = '/data1/dj/Norm_BCA_metrics/BCA-Trimmed-Refined/All_original
 convert_json = true
 
 # Declare the labels that need to be inferred.
-#inference_labels = ['SAT_WB', 'VAT_WB', 'SMT_WB', 'Sk_WB']
-inference_labels = ['Skn_WB']
+inference_labels = ['SAT_WB', 'VAT_WB', 'SMT_WB', 'Sk_WB', 'Skn_WB']
+#inference_labels = ['Skn_WB']
 
 # The following contents define the pre-trained weights for each class.
 pretrained_model_zoo = '/data1/dj/bca_pretrained'
@@ -27,28 +27,28 @@ model = 'ganet'
 pretrained_weights = '${pretrained_model_zoo}/SAT_whole_body/SAT_ganet_wb.pt'
 network_config = '${pretrained_model_zoo}/SAT_whole_body/network_config.toml'
 data_property = '${pretrained_model_zoo}/SAT_whole_body/data_property.json'
-batch_size = 80
+batch_size = 30
 
 [labels.VAT_WB]
 model = 'ganet'
 pretrained_weights = '${pretrained_model_zoo}/VAT_whole_body/VAT_ganet_wb.pt'
 network_config = '${pretrained_model_zoo}/VAT_whole_body/network_config.toml'
 data_property = '${pretrained_model_zoo}/VAT_whole_body/data_property.json'
-batch_size = 80
+batch_size = 30
 
 [labels.SMT_WB]
 model = 'ganet'
 pretrained_weights = '${pretrained_model_zoo}/SMT_whole_body/SMT_ganet_wb.pt'
 network_config = '${pretrained_model_zoo}/SMT_whole_body/network_config.toml'
 data_property = '${pretrained_model_zoo}/SMT_whole_body/data_property.json'
-batch_size = 80
+batch_size = 30
 
 [labels.Sk_WB]
 model = 'ganet'
 pretrained_weights = '${pretrained_model_zoo}/Sk_whole_body/Sk_ganet_wb.pt'
 network_config = '${pretrained_model_zoo}/Sk_whole_body/network_config.toml'
 data_property = '${pretrained_model_zoo}/Sk_whole_body/data_property.json'
-batch_size = 80
+batch_size = 30
 
 [labels.IAM]
 model = 'unet_plus_plus'

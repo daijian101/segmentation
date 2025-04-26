@@ -23,30 +23,39 @@ from models import model_zoo
 from post_process import PostProcessTransformCompose, post_process_methods
 
 
-def convert2json(study_index, failure_samples):
+def get_output_file(study, label):
+    bim_save_path = cfg.output_cavass_dir
+    output_file = os.path.join(bim_save_path, study, f'{study}_{label}.BIM')
+    return output_file
+
+def get_im0_file(study):
+    im0_file = os.path.join(cfg.IM0_dir, study, f'{study}-CT.IM0')
+    return im0_file
+
+
+def convert2json(study, failure_samples):
     # study_name = os.path.basename(study_index)[:-4]
     # json_file = os.path.join(cfg.volume_json_dir, f'{study_name}.json')
 
-    json_file = os.path.join(cfg.volume_json_dir, f'{study_index}.json')
+    json_file = os.path.join(cfg.volume_json_dir, f'{study}.json')
 
     if os.path.exists(json_file):
         return
 
-    # Declare directory structure
-    im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
-    # im0_file = study_index
+    im0_file = get_im0_file(study)
     try:
         image_data = cavass.read_cavass_file(im0_file)
     except OSError:
-        failure_samples.append(study_index)
+        failure_samples.append(study)
         traceback.print_exc()
         return
 
-    json_obj = {'data': image_data, 'subject': study_index}
+    json_obj = {'data': image_data, 'subject': study}
     save_json(json_file, json_obj)
 
 
 def main():
+
     if 'inference_samples' in cfg:
         if isinstance(cfg.inference_samples, str):
             studies = read_txt2list(cfg.inference_samples)
@@ -54,8 +63,8 @@ def main():
             studies = cfg.inference_samples
     else:
         # Declare directory structure
-        studies = [each[:-4] for each in os.listdir(cfg.IM0_dir)]
-        # studies = [each for each in os.listdir(cfg.IM0_dir)]
+        # studies = [each[:-4] for each in os.listdir(cfg.IM0_dir)]
+        studies = [each for each in os.listdir(cfg.IM0_dir)]
         # studies = [each[:-4] for each in os.listdir(cfg.IM0_dir) if each.find('-CT') != -1 or each.find('-CT-') != -1]
         # studies = []
 
@@ -81,11 +90,8 @@ def main():
 
     print('======Infer subjects======')
 
-    json_samples = [f'{each}.json' for each in studies]
-    # json_samples = [f'{os.path.basename(each)[:-4]}.json' for each in studies]
-
-    for target_label in tqdm(cfg.inference_labels):
-        data_property = read_json(cfg.labels[target_label].data_property)
+    for label in cfg.inference_labels:
+        data_property = read_json(cfg.labels[label].data_property)
 
         tr_transforms = Compose([
             ToType(keys='data', dtype=np.float32),
@@ -95,59 +101,56 @@ def main():
                                 upper_bound=data_property['intensity_99_5_percentile']),
         ])
 
+        json_samples = []
+        for study in studies:
+            output_file = get_output_file(study, label)
+            if not os.path.exists(output_file):
+                json_samples.append(f'{study}.json')
+
+        if not json_samples:
+            print(f'No study needs to segment {label}.')
+            continue
+
+
         dataset = ImageDataset(json_samples,
                                cfg.volume_json_dir,
                                transforms=tr_transforms)
         data_loader = DataLoader(dataset, 1)
 
-        model_name = cfg.labels[target_label].model
-        network_config = load_config(cfg.labels[target_label].network_config)
+        model_name = cfg.labels[label].model
+        network_config = load_config(cfg.labels[label].network_config)
         model = model_zoo[model_name](network_config).to(device)
-        load_weights(cfg.labels[target_label].pretrained_weights, model)
-        inference_method = cfg.labels[target_label].inference_method if 'inference_method' in cfg.labels[target_label] \
-            else cfg.labels[target_label].model
+        load_weights(cfg.labels[label].pretrained_weights, model)
+        inference_method = cfg.labels[label].inference_method if 'inference_method' in cfg.labels[label] \
+            else cfg.labels[label].model
 
-        inference_method_extra_args = cfg.labels[target_label].inference_method_args if 'inference_method_args' in \
-                                                                                        cfg.labels[target_label] else {}
+        inference_method_extra_args = cfg.labels[label].inference_method_args if 'inference_method_args' in \
+                                                                                        cfg.labels[label] else {}
 
-        if 'batch_size' in cfg.labels[target_label]:
-            batch_size = cfg.labels[target_label].batch_size
+        if 'batch_size' in cfg.labels[label]:
+            batch_size = cfg.labels[label].batch_size
         else:
             batch_size = cfg.batch_size
         inference_ist = inference_zoo[inference_method](model, batch_size, device,
                                                         **inference_method_extra_args)
 
         trs = []
-        if 'post_process' in cfg.labels[target_label]:
-            for each_transform in cfg.labels[target_label]['post_process']:
+        if 'post_process' in cfg.labels[label]:
+            for each_transform in cfg.labels[label]['post_process']:
                 trs.append(post_process_methods[each_transform]())
         post_process_compose = PostProcessTransformCompose(trs)
 
         for batch in tqdm(data_loader):
-            study_index = batch['subject'][0]
+            study = batch['subject'][0]
 
-            # bim_save_path = os.path.join(cfg.output_cavass_dir, f'{target_label}')
-
-            # bim_save_path = os.path.join(cfg.output_cavass_dir)
-            # study_index_path = study_index.split(os.sep)
-            # output_file_path = os.path.join(bim_save_path, study_index_path[5], study_index_path[6],
-            #                                 f'{study_index_path[7][:-4]}_{target_label}.BIM')
-
-            bim_save_path = cfg.output_cavass_dir
-            output_file = os.path.join(bim_save_path, target_label, f'{study_index}.BIM')
-            if os.path.exists(output_file):
-                continue
             with autocast():
                 result = inference_ist.infer_sample(batch)
             segmentation = result.cpu().numpy().astype(bool)
 
             segmentation = post_process_compose(segmentation)
 
-            # Declare directory structure
-            # im0_file = os.path.join(cfg.IM0_dir, study_index, f'{study_index}.IM0')
-            im0_file = os.path.join(cfg.IM0_dir, f'{study_index}.IM0')
-            # im0_file = study_index
-
+            im0_file = get_im0_file(study)
+            output_file = get_output_file(study, label)
             cavass.save_cavass_file(output_file, segmentation, True, copy_pose_file=im0_file)
 
 
